@@ -1,0 +1,13 @@
+# Dossier de compilation (fichiers générés)
+build/
+
+# Fichiers de configuration locale (spécifiques à chaque développeur)
+*.iml
+
+# Fichiers APK/Bundle générés (pas besoin de les versionner)
+*.apk
+*.aab
+
+# Fichiers de logs (évite d'envoyer des fichiers de debug inutiles)
+*.log
+

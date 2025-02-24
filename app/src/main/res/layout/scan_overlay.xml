@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#88000000"> <!-- Fond semi-transparent -->
+
+    <!-- Zone de scan (cadre) centrée -->
+    <View
+        android:id="@+id/scan_frame"
+        android:layout_width="250dp"
+        android:layout_height="250dp"
+        android:layout_gravity="center"
+        android:background="@drawable/scan_frame_shape" />
+
+    <!-- Texte d'instruction en bas -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Placez le code-barres dans le cadre"
+        android:textColor="#FFFFFF"
+        android:textSize="18sp"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="32dp" />
+
+</FrameLayout>

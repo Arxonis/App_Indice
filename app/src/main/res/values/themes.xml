@@ -1,0 +1,19 @@
+<!-- Dans res/values/themes.xml -->
+<resources>
+    <!-- Thème principal pour votre app, héritant d'un thème Material moderne -->
+    <style name="Theme.IndiceApp" parent="Theme.MaterialComponents.Light.NoActionBar">
+        <item name="colorPrimary">#578C47</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="android:windowBackground">@android:color/white</item>
+        <item name="android:navigationBarColor">#f3f8ec</item>
+        <!-- Autres personnalisations -->
+    </style>
+
+
+    <!-- Thème spécifique pour la CaptureActivity (Scan) -->
+    <style name="zxing_CaptureTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:windowBackground">@android:color/black</item>
+        <!-- Vous pouvez ajouter ici des éléments décoratifs ou des animations personnalisées -->
+    </style>
+</resources>
+

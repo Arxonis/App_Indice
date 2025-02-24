@@ -1,0 +1,25 @@
+# Dossiers Android Studio
+.idea/
+.gradle/
+.kotlin/
+
+# Dossiers de compilation
+build/
+app/build/
+out/
+
+# Configuration locale
+local.properties
+
+# Fichiers temporaires
+*.iml
+*.log
+
+# Clés et certificats (JAMAIS sur GitHub)
+*.keystore
+*.jks
+
+# Scripts de build
+gradlew
+gradlew.bat
+
