@@ -38,7 +38,7 @@ class ScanActivity : AppCompatActivity() {
             setDesiredBarcodeFormats(ScanOptions.ALL_CODE_TYPES)
             setPrompt("Scannez un code-barres")
             setCameraId(0) // Utilise la caméra arrière
-            setBeepEnabled(true)
+            setBeepEnabled(false)
             setOrientationLocked(false)
         }
         barcodeLauncher.launch(options)

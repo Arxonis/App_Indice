@@ -7,10 +7,13 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import com.indicefossile.indiceapp.ui.components.HomeScreen
 import com.indicefossile.indiceapp.ui.theme.IndiceAppTheme
+import android.content.pm.ActivityInfo
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         setContent {
             IndiceAppTheme {
                 HomeScreen(
