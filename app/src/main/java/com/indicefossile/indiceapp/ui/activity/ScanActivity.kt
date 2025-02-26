@@ -3,8 +3,10 @@ package com.indicefossile.indiceapp.ui.activity
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.runtime.LaunchedEffect
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
 import com.indicefossile.indiceapp.R
@@ -13,54 +15,59 @@ import com.indicefossile.indiceapp.data.model.ScannedProduct
 import com.indicefossile.indiceapp.data.repository.ScannedProductRepository
 import com.indicefossile.indiceapp.ui.viewmodel.ScannedProductViewModel
 import com.indicefossile.indiceapp.ui.viewmodel.ScannedProductViewModelFactory
+import kotlinx.coroutines.delay
 
 class ScanActivity : AppCompatActivity() {
 
-    // Initialisation de la base de données et du repository
     private val database by lazy { AppDatabase.getDatabase(this) }
     private val repository by lazy { ScannedProductRepository(database.scannedProductDao()) }
 
-    // Initialisation du ViewModel avec la Factory
     private val viewModel: ScannedProductViewModel by viewModels {
         ScannedProductViewModelFactory(repository)
     }
 
-    // Prépare le launcher pour le scan
+    // 🔹 Lance DetailActivity et attend le résultat
+    private val detailLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == RESULT_OK) {
+            val productName = result.data?.getStringExtra("product_name")
+            val barcode = result.data?.getStringExtra("barcode")
+
+            if (productName != null && barcode != null) {
+                val scannedProduct = ScannedProduct(barcode = barcode, name = productName)
+                viewModel.insertProduct(scannedProduct) // 🔹 Sauvegarde dans la base de données
+                Toast.makeText(this, "Produit enregistré: $productName", Toast.LENGTH_SHORT).show()
+            }
+        }
+        finish()
+    }
+
+    // 🔹 Lance le scan
     private val barcodeLauncher = registerForActivityResult(ScanContract()) { result ->
         if (result.contents == null) {
             Toast.makeText(this, "Scan annulé", Toast.LENGTH_SHORT).show()
         } else {
-            // Récupération du code scanné
             val codeBarre = result.contents
             Toast.makeText(this, "Code scanné : $codeBarre", Toast.LENGTH_SHORT).show()
 
-            // Création de l'objet produit scanné
-            val scannedProduct = ScannedProduct(barcode = codeBarre, name = )
-
-            // Insertion du produit dans la base de données
-            viewModel.insertProduct(scannedProduct)
-
-            // Lancement de DetailActivity avec le code scanné
-            val intent = Intent(this, DetailActivity::class.java)
-            intent.putExtra("barcode", codeBarre)
-            startActivity(intent)
-            finish() // Ferme ScanActivity après le scan
+            // 🔹 Lancement de DetailActivity pour récupérer le vrai nom du produit
+            val intent = Intent(this, DetailActivity::class.java).apply {
+                putExtra("barcode", codeBarre)
+            }
+            detailLauncher.launch(intent) // 🚀 Attend la réponse de DetailActivity
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_scan) // Assure-toi que ce layout existe
-
-        // Lance immédiatement le scan
-        startScan()
+        setContentView(R.layout.activity_scan)
+        startScan() // 🔹 Démarre le scan directement
     }
 
     private fun startScan() {
         val options = ScanOptions().apply {
             setDesiredBarcodeFormats(ScanOptions.ALL_CODE_TYPES)
             setPrompt("Scannez un code-barres")
-            setCameraId(0) // Utilise la caméra arrière
+            setCameraId(0)
             setBeepEnabled(false)
             setOrientationLocked(false)
         }
