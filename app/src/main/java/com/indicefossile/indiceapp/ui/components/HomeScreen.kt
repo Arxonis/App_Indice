@@ -3,31 +3,38 @@ package com.indicefossile.indiceapp.ui.components
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.indicefossile.indiceapp.R
+import com.indicefossile.indiceapp.data.model.ScannedProduct
+import com.indicefossile.indiceapp.ui.viewmodel.ScannedProductViewModel
 
 @Composable
 fun HomeScreen(
+    viewModel: ScannedProductViewModel, // Ajout du ViewModel
     onScanClick: () -> Unit,
     onWebsiteClick: () -> Unit,
 ) {
+    val scannedProducts by viewModel.allProducts.collectAsState(initial = emptyList())
 
-    // Contenu principal
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState()) // Permet le scroll si le contenu dépasse la hauteur de l'écran
+            .verticalScroll(rememberScrollState()) // Permet le scroll si le contenu dépasse l'écran
             .background(MaterialTheme.colorScheme.background)
             .padding(16.dp)
     ) {
@@ -43,7 +50,7 @@ fun HomeScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Titre de la section des produits scannés
+        // Titre de l'historique
         Text(
             text = "Produits scannés",
             style = MaterialTheme.typography.titleLarge,
@@ -52,11 +59,18 @@ fun HomeScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-
+        // Affichage de la liste des produits scannés
+        LazyColumn(
+            modifier = Modifier.weight(1f) // Garde de la place pour les boutons en bas
+        ) {
+            items(scannedProducts) { product ->
+                ScannedProductItem(product)
+            }
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Boutons d'action (Scanner et Catalogue)
+        // Boutons Scanner et Catalogue
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly,
@@ -78,6 +92,24 @@ fun HomeScreen(
             ) {
                 Text(text = "Catalogue")
             }
+        }
+    }
+}
+
+@Composable
+fun ScannedProductItem(product: ScannedProduct) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        tonalElevation = 2.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(text = "Nom: ${product.name}", style = MaterialTheme.typography.bodyLarge)
+            Text(text = "Code-barres: ${product.barcode}", style = MaterialTheme.typography.bodyMedium)
+            Text(text = "Scanné à: ${product.timestamp}", style = MaterialTheme.typography.bodySmall)
         }
     }
 }

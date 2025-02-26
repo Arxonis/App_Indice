@@ -1,16 +1,17 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("kotlin-kapt")
 }
 
 android {
     namespace = "com.indicefossile.indiceapp"
-    compileSdk = 33
+    compileSdk = 34
 
     defaultConfig {
         applicationId = "com.indicefossile.indiceapp"
         minSdk = 21
-        targetSdk = 33
+        targetSdk = 34
         versionCode = 1
         versionName = "1.0"
 
@@ -32,7 +33,7 @@ android {
     }
 
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.4.7" // À adapter selon votre version de Compose
+        kotlinCompilerExtensionVersion = "1.5.11"
     }
 
     compileOptions {
@@ -69,11 +70,19 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.2.2")
 
     // Scanner de code-barres (ZXing via JourneyApps)
-
     implementation("com.journeyapps:zxing-android-embedded:4.3.0")
     implementation("com.google.zxing:core:3.4.1")
 
     implementation("com.google.android.material:material:1.9.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.5.1")
 
+    // Room Database avec support des coroutines
+    implementation("androidx.room:room-runtime:2.6.1")
+    kapt("androidx.room:room-compiler:2.6.1")
+    implementation("androidx.room:room-ktx:2.6.1") // Support des coroutines
 }
+
+kapt {
+    correctErrorTypes = true
+}
+
