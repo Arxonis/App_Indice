@@ -6,7 +6,6 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.runtime.LaunchedEffect
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
 import com.indicefossile.indiceapp.R
@@ -15,7 +14,6 @@ import com.indicefossile.indiceapp.data.model.ScannedProduct
 import com.indicefossile.indiceapp.data.repository.ScannedProductRepository
 import com.indicefossile.indiceapp.ui.viewmodel.ScannedProductViewModel
 import com.indicefossile.indiceapp.ui.viewmodel.ScannedProductViewModelFactory
-import kotlinx.coroutines.delay
 
 class ScanActivity : AppCompatActivity() {
 

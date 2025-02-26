@@ -22,6 +22,9 @@ import androidx.compose.ui.unit.dp
 import com.indicefossile.indiceapp.R
 import com.indicefossile.indiceapp.data.model.ScannedProduct
 import com.indicefossile.indiceapp.ui.viewmodel.ScannedProductViewModel
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun HomeScreen(
@@ -98,6 +101,7 @@ fun HomeScreen(
 
 @Composable
 fun ScannedProductItem(product: ScannedProduct) {
+    val Formated = SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault()).format(Date(product.timestamp))
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -109,7 +113,7 @@ fun ScannedProductItem(product: ScannedProduct) {
         ) {
             Text(text = "Nom: ${product.name}", style = MaterialTheme.typography.bodyLarge)
             Text(text = "Code-barres: ${product.barcode}", style = MaterialTheme.typography.bodyMedium)
-            Text(text = "Scanné à: ${product.timestamp}", style = MaterialTheme.typography.bodySmall)
+            Text(text = "Scanné le : $Formated", style = MaterialTheme.typography.bodySmall)
         }
     }
 }

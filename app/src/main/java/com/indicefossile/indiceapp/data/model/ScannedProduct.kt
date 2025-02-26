@@ -8,5 +8,5 @@ data class ScannedProduct(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,  // ID unique
     val barcode: String,  // Code-barres du produit
     val name: String,  // Nom du produit
-    val timestamp: Long = System.currentTimeMillis() // Date du scan
+    val timestamp: Long = System.currentTimeMillis(),
 )
