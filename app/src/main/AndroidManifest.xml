@@ -8,8 +8,10 @@
 
     <application
         android:allowBackup="true"
-        android:label="IndiceApp"
-        android:theme="@style/Theme.IndiceApp">
+        android:label="Indice\nFossile"
+        android:theme="@style/Theme.IndiceApp"
+        android:icon="@mipmap/ic_launcher_foreground"
+        android:roundIcon="@mipmap/ic_launcher_round">
 
         <activity
             android:name=".ui.activity.MainActivity"

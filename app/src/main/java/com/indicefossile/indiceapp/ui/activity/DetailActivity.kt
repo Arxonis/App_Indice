@@ -22,7 +22,6 @@ class DetailActivity : ComponentActivity() {
         viewModel.fetchProduct(barcode)
 
         setContent {
-
             val product by viewModel.product.collectAsState()
             // Envoi des résultats uniquement lorsque le produit est trouvé
             LaunchedEffect(product) {

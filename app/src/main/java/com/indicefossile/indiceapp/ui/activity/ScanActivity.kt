@@ -58,7 +58,9 @@ class ScanActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_scan)
-        startScan() // 🔹 Démarre le scan directement
+        if (savedInstanceState == null) {
+            startScan()
+        }
     }
 
     private fun startScan() {
