@@ -65,7 +65,8 @@ class ScanActivity : AppCompatActivity() {
             val intent = Intent(this, DetailActivity::class.java).apply {
                 putExtra("barcode", codeBarre)
             }
-            detailLauncher.launch(intent) // 🚀 Attend la réponse de DetailActivity
+            if (!isMultipleScan)
+                detailLauncher.launch(intent) // 🚀 Attend la réponse de DetailActivity
         }
     }
 
@@ -80,7 +81,7 @@ class ScanActivity : AppCompatActivity() {
                     val scannedProduct = ScannedProduct(barcode = barcode, name = productName)
 
                     if (isMultipleScan) {
-                        scannedProducts.add(scannedProduct) // 🔹 Ajoute le produit à la liste temporaire
+                        scannedProducts.add(scannedProduct)
                         Toast.makeText(this, "$productName ajouté", Toast.LENGTH_SHORT).show()
                         startScan() // 🔄 Relance un nouveau scan
                     } else {
