@@ -62,11 +62,18 @@ class ScanActivity : AppCompatActivity() {
             val codeBarre = result.contents
             Toast.makeText(this, "Code scanné : $codeBarre", Toast.LENGTH_SHORT).show()
 
-            val intent = Intent(this, DetailActivity::class.java).apply {
-                putExtra("barcode", codeBarre)
+            if (!isMultipleScan) {
+                val intent = Intent(this, DetailActivity::class.java).apply {
+                    putExtra("barcode", codeBarre)
+                }
+                detailLauncher.launch(intent) // 🚀 Attend la réponse de DetailActivity uniquement en mode unique
+            } else {
+                // 🔹 En mode multiple, on ajoute directement à la liste
+                val scannedProduct = ScannedProduct(barcode = codeBarre, name = "Produit inconnu")
+                scannedProducts.add(scannedProduct)
+                Toast.makeText(this, "Produit ajouté à la liste", Toast.LENGTH_SHORT).show()
+                startScan() // 🔄 Relance un nouveau scan
             }
-            if (!isMultipleScan)
-                detailLauncher.launch(intent) // 🚀 Attend la réponse de DetailActivity
         }
     }
 
