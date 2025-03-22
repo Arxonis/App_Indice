@@ -26,6 +26,7 @@ import coil.compose.rememberAsyncImagePainter
 import com.indicefossile.indiceapp.R
 import com.indicefossile.indiceapp.data.model.Product
 import com.indicefossile.indiceapp.ui.utils.getProductImageUrl
+import java.math.RoundingMode
 
 // Fonctions d'aide pour mapper les scores aux images disponibles dans vos ressources.
 @Composable
@@ -179,7 +180,7 @@ fun ProductDetailScreen(product: Product, modifier: Modifier = Modifier) {
                         color = MaterialTheme.colorScheme.error
                     )
                     product.ecoscore_data?.agribalyse?.let { agr ->
-                        DetailItem(label = "Total", value = agr.co2_total?.toString() ?: "?")
+                        DetailItem(label = "Total", value = agr.co2_total?.toBigDecimal()?.setScale(3, RoundingMode.HALF_UP)?.toDouble().toString() ?: "?")
                     } ?: Text(
                         text = "Données Agribalyse non disponibles",
                         style = MaterialTheme.typography.bodyLarge,
@@ -187,12 +188,12 @@ fun ProductDetailScreen(product: Product, modifier: Modifier = Modifier) {
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     product.ecoscore_data?.agribalyse?.let { agr ->
-                        DetailItem(label = "Agriculture", value = agr.co2_agriculture?.toString() ?: "?")
-                        DetailItem(label = "Consumption", value = agr.co2_consumption?.toString() ?: "?")
-                        DetailItem(label = "Distribution", value = agr.co2_distribution?.toString() ?: "?")
-                        DetailItem(label = "Packaging", value = agr.co2_packaging?.toString() ?: "?")
-                        DetailItem(label = "Processing", value = agr.co2_processing?.toString() ?: "?")
-                        DetailItem(label = "Transportation", value = agr.co2_transportation?.toString() ?: "?")
+                        DetailItem(label = "Agriculture", value = agr.co2_agriculture?.toBigDecimal()?.setScale(3, RoundingMode.HALF_UP)?.toDouble().toString() ?: "?")
+                        DetailItem(label = "Consumption", value = agr.co2_consumption?.toBigDecimal()?.setScale(3, RoundingMode.HALF_UP)?.toDouble().toString() ?: "?")
+                        DetailItem(label = "Distribution", value = agr.co2_distribution?.toBigDecimal()?.setScale(3, RoundingMode.HALF_UP)?.toDouble().toString() ?: "?")
+                        DetailItem(label = "Packaging", value = agr.co2_packaging?.toBigDecimal()?.setScale(3, RoundingMode.HALF_UP)?.toDouble().toString() ?: "?")
+                        DetailItem(label = "Processing", value = agr.co2_processing?.toBigDecimal()?.setScale(3, RoundingMode.HALF_UP)?.toDouble().toString() ?: "?")
+                        DetailItem(label = "Transportation", value = agr.co2_transportation?.toBigDecimal()?.setScale(3, RoundingMode.HALF_UP)?.toDouble().toString() ?: "?")
                     } ?: Text(
                         text = "Données Agribalyse non disponibles",
                         style = MaterialTheme.typography.bodyMedium,
