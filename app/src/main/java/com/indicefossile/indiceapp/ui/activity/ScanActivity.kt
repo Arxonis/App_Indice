@@ -1,5 +1,6 @@
 package com.indicefossile.indiceapp.ui.activity
 
+import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
@@ -19,35 +20,48 @@ class ScanActivity : AppCompatActivity() {
 
     private val database by lazy { AppDatabase.getDatabase(this) }
     private val repository by lazy { ScannedProductRepository(database.scannedProductDao()) }
-
     private val viewModel: ScannedProductViewModel by viewModels {
         ScannedProductViewModelFactory(repository)
     }
 
-    // 🔹 Lance DetailActivity et attend le résultat
-    private val detailLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == RESULT_OK) {
-            val productName = result.data?.getStringExtra("product_name")
-            val barcode = result.data?.getStringExtra("barcode")
+    private val scannedProducts = mutableListOf<ScannedProduct>() // 🔹 Liste pour le mode multiple
+    private var isMultipleScan = false // 🔹 Détermine le mode de scan
 
-            if (productName != null && barcode != null) {
-                val scannedProduct = ScannedProduct(barcode = barcode, name = productName)
-                viewModel.insertProduct(scannedProduct) // 🔹 Sauvegarde dans la base de données
-                Toast.makeText(this, "Produit enregistré: $productName", Toast.LENGTH_SHORT).show()
-            }
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_scan)
+
+        if (savedInstanceState == null) {
+            showScanModeDialog() // 🔥 Demande à l'utilisateur de choisir un mode
         }
-        finish()
     }
 
-    // 🔹 Lance le scan
+    // 🔹 Demande à l'utilisateur de choisir entre scan unique et multiple
+    private fun showScanModeDialog() {
+        val options = arrayOf("Scan Unique", "Scan Multiple")
+        AlertDialog.Builder(this)
+            .setTitle("Choisissez un mode de scan")
+            .setItems(options) { _, which ->
+                isMultipleScan = (which == 1)
+                startScan() // 🔥 Démarrer le scan après le choix
+            }
+            .setCancelable(false)
+            .show()
+    }
+
+    // 🔹 Gestion du scan unique ou multiple
     private val barcodeLauncher = registerForActivityResult(ScanContract()) { result ->
         if (result.contents == null) {
-            Toast.makeText(this, "Scan annulé", Toast.LENGTH_SHORT).show()
+            if (isMultipleScan && scannedProducts.isNotEmpty()) {
+                saveAllScannedProducts() // ✅ Enregistrer tous les produits en mode multiple
+            } else {
+                Toast.makeText(this, "Scan annulé", Toast.LENGTH_SHORT).show()
+                finish()
+            }
         } else {
             val codeBarre = result.contents
             Toast.makeText(this, "Code scanné : $codeBarre", Toast.LENGTH_SHORT).show()
 
-            // 🔹 Lancement de DetailActivity pour récupérer le vrai nom du produit
             val intent = Intent(this, DetailActivity::class.java).apply {
                 putExtra("barcode", codeBarre)
             }
@@ -55,22 +69,46 @@ class ScanActivity : AppCompatActivity() {
         }
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_scan)
-        if (savedInstanceState == null) {
-            startScan()
+    // 🔹 Gestion de la récupération du nom du produit
+    private val detailLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == RESULT_OK) {
+                val productName = result.data?.getStringExtra("product_name")
+                val barcode = result.data?.getStringExtra("barcode")
+
+                if (productName != null && barcode != null) {
+                    val scannedProduct = ScannedProduct(barcode = barcode, name = productName)
+
+                    if (isMultipleScan) {
+                        scannedProducts.add(scannedProduct) // 🔹 Ajoute le produit à la liste temporaire
+                        Toast.makeText(this, "$productName ajouté", Toast.LENGTH_SHORT).show()
+                        startScan() // 🔄 Relance un nouveau scan
+                    } else {
+                        viewModel.insertProduct(scannedProduct) // ✅ Mode unique : Enregistrement immédiat
+                        Toast.makeText(this, "Produit enregistré: $productName", Toast.LENGTH_SHORT)
+                            .show()
+                        finish()
+                    }
+                }
+            }
         }
-    }
 
     private fun startScan() {
         val options = ScanOptions().apply {
             setDesiredBarcodeFormats(ScanOptions.ALL_CODE_TYPES)
-            setPrompt("Scannez un code-barres")
+            setPrompt(if (isMultipleScan) "Scannez un produit (annulez pour terminer)" else "Scannez un code-barres")
             setCameraId(0)
             setBeepEnabled(false)
             setOrientationLocked(false)
         }
         barcodeLauncher.launch(options)
+    }
+
+    private fun saveAllScannedProducts() {
+        for (product in scannedProducts)
+            viewModel.insertProduct(product)
+        Toast.makeText(this, "${scannedProducts.size} produit(s) enregistré(s)", Toast.LENGTH_SHORT)
+            .show()
+        finish()
     }
 }
