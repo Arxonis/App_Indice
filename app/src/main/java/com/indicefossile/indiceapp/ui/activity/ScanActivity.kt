@@ -1,105 +1,121 @@
 package com.indicefossile.indiceapp.ui.activity
 
 import android.app.AlertDialog
-import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.compose.setContent
+import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
-import com.indicefossile.indiceapp.R
 import com.indicefossile.indiceapp.data.database.AppDatabase
 import com.indicefossile.indiceapp.data.model.ScannedProduct
 import com.indicefossile.indiceapp.data.repository.ScannedProductRepository
 import com.indicefossile.indiceapp.ui.viewmodel.ScannedProductViewModel
 import com.indicefossile.indiceapp.ui.viewmodel.ScannedProductViewModelFactory
+import com.indicefossile.indiceapp.viewmodel.ProductViewModel
 
 class ScanActivity : AppCompatActivity() {
-
+    private val productViewModel by viewModels<ProductViewModel>()
     private val database by lazy { AppDatabase.getDatabase(this) }
     private val repository by lazy { ScannedProductRepository(database.scannedProductDao()) }
     private val viewModel: ScannedProductViewModel by viewModels {
         ScannedProductViewModelFactory(repository)
     }
 
-    private val scannedProducts = mutableListOf<ScannedProduct>() // 🔹 Liste pour le mode multiple
-    private var isMultipleScan = false // 🔹 Détermine le mode de scan
+    private val scannedProducts = mutableListOf<ScannedProduct>()
+    private var scannedBarcode: String? by mutableStateOf(null)
+
+    private var isMultipleScan = false // ✅ Ne pas déclarer en `mutableStateOf` ici !
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_scan)
 
-        if (savedInstanceState == null) {
-            showScanModeDialog() // 🔥 Demande à l'utilisateur de choisir un mode
+        if (savedInstanceState != null) {
+            // ✅ Si l'activité est recréée, on récupère le mode choisi et on affiche directement l'UI
+            isMultipleScan = savedInstanceState.getBoolean("isMultipleScan", false)
+            setContent { ScanScreen(isMultipleScan) }
+            startScan()
+        } else {
+            // ✅ Si c'est la première fois, on demande à l'utilisateur de choisir
+            showScanModeDialog()
         }
     }
 
-    // 🔹 Demande à l'utilisateur de choisir entre scan unique et multiple
+    // ✅ Sauvegarde le choix en cas de recréation de l'activité
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putBoolean("isMultipleScan", isMultipleScan)
+    }
+
+
+    /**
+     * Affiche la boîte de dialogue et attend la réponse avant d'afficher `ScanScreen`
+     */
     private fun showScanModeDialog() {
         val options = arrayOf("Scan Unique", "Scan Multiple")
         AlertDialog.Builder(this)
             .setTitle("Choisissez un mode de scan")
             .setItems(options) { _, which ->
-                isMultipleScan = (which == 1)
-                startScan() // 🔥 Démarrer le scan après le choix
+                isMultipleScan = (which == 1) // ✅ Mise à jour du mode choisi
+
+                // ✅ Maintenant que l'utilisateur a choisi, on affiche `ScanScreen`
+                setContent { ScanScreen(isMultipleScan) }
+
+                // ✅ Démarrer le scan après l'affichage de l'écran
+                startScan()
             }
             .setCancelable(false)
             .show()
     }
 
-    // 🔹 Gestion du scan unique ou multiple
+    @Composable
+    fun ScanScreen(isMultipleScan: Boolean) {
+        val context = LocalContext.current
+        val product by productViewModel.product.collectAsState()
+
+        LaunchedEffect(scannedBarcode) {
+            scannedBarcode?.let { barcode ->
+                productViewModel.fetchProduct(barcode)
+            }
+        }
+
+        if (product != null) {
+            val scannedProduct = product!!.product_name?.let {
+                ScannedProduct(
+                    barcode = scannedBarcode ?: "",
+                    name = it
+                )
+            }
+
+            if (isMultipleScan) {
+                scannedProduct?.let { scannedProducts.add(it) }
+                Toast.makeText(context, "${product!!.product_name} ajouté", Toast.LENGTH_SHORT).show()
+                scannedBarcode = null
+                startScan()
+            } else {
+                scannedProduct?.let { viewModel.insertProduct(it) }
+                Toast.makeText(context, "Produit enregistré: ${product!!.product_name}", Toast.LENGTH_SHORT).show()
+                finish()
+            }
+        }
+    }
+
     private val barcodeLauncher = registerForActivityResult(ScanContract()) { result ->
         if (result.contents == null) {
             if (isMultipleScan && scannedProducts.isNotEmpty()) {
-                saveAllScannedProducts() // ✅ Enregistrer tous les produits en mode multiple
+                saveAllScannedProducts()
             } else {
                 Toast.makeText(this, "Scan annulé", Toast.LENGTH_SHORT).show()
                 finish()
             }
         } else {
-            val codeBarre = result.contents
-            Toast.makeText(this, "Code scanné : $codeBarre", Toast.LENGTH_SHORT).show()
-
-            if (!isMultipleScan) {
-                val intent = Intent(this, DetailActivity::class.java).apply {
-                    putExtra("barcode", codeBarre)
-                }
-                detailLauncher.launch(intent) // 🚀 Attend la réponse de DetailActivity uniquement en mode unique
-            } else {
-                // 🔹 En mode multiple, on ajoute directement à la liste
-                val scannedProduct = ScannedProduct(barcode = codeBarre, name = "Produit inconnu")
-                scannedProducts.add(scannedProduct)
-                Toast.makeText(this, "Produit ajouté à la liste", Toast.LENGTH_SHORT).show()
-                startScan() // 🔄 Relance un nouveau scan
-            }
+            scannedBarcode = result.contents
+            Toast.makeText(this, "Code scanné : $scannedBarcode", Toast.LENGTH_SHORT).show()
         }
     }
-
-    // 🔹 Gestion de la récupération du nom du produit
-    private val detailLauncher =
-        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            if (result.resultCode == RESULT_OK) {
-                val productName = result.data?.getStringExtra("product_name")
-                val barcode = result.data?.getStringExtra("barcode")
-
-                if (productName != null && barcode != null) {
-                    val scannedProduct = ScannedProduct(barcode = barcode, name = productName)
-
-                    if (isMultipleScan) {
-                        scannedProducts.add(scannedProduct)
-                        Toast.makeText(this, "$productName ajouté", Toast.LENGTH_SHORT).show()
-                        startScan() // 🔄 Relance un nouveau scan
-                    } else {
-                        viewModel.insertProduct(scannedProduct) // ✅ Mode unique : Enregistrement immédiat
-                        Toast.makeText(this, "Produit enregistré: $productName", Toast.LENGTH_SHORT)
-                            .show()
-                        finish()
-                    }
-                }
-            }
-        }
 
     private fun startScan() {
         val options = ScanOptions().apply {
@@ -113,10 +129,10 @@ class ScanActivity : AppCompatActivity() {
     }
 
     private fun saveAllScannedProducts() {
-        for (product in scannedProducts)
+        for (product in scannedProducts) {
             viewModel.insertProduct(product)
-        Toast.makeText(this, "${scannedProducts.size} produit(s) enregistré(s)", Toast.LENGTH_SHORT)
-            .show()
+        }
+        Toast.makeText(this, "${scannedProducts.size} produit(s) enregistré(s)", Toast.LENGTH_SHORT).show()
         finish()
     }
 }
