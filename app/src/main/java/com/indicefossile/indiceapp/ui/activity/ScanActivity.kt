@@ -14,6 +14,7 @@ import com.journeyapps.barcodescanner.ScanOptions
 import com.indicefossile.indiceapp.data.database.AppDatabase
 import com.indicefossile.indiceapp.data.model.ScannedProduct
 import com.indicefossile.indiceapp.data.repository.ScannedProductRepository
+import com.indicefossile.indiceapp.ui.utils.getProductImageUrl
 import com.indicefossile.indiceapp.ui.viewmodel.ScannedProductViewModel
 import com.indicefossile.indiceapp.ui.viewmodel.ScannedProductViewModelFactory
 import com.indicefossile.indiceapp.viewmodel.ProductViewModel
@@ -72,7 +73,6 @@ class ScanActivity : AppCompatActivity() {
             .show()
     }
 
-    // Fonction Composable pour afficher l'UI du scan
     @Composable
     fun ScanScreen(isMultipleScan: Boolean) {
         val context = LocalContext.current
@@ -87,43 +87,55 @@ class ScanActivity : AppCompatActivity() {
 
         // Si un produit est trouvé, on le traite
         if (product != null && scannedBarcode != null) {
-            val scannedProduct = product!!.product_name?.let {
-                ScannedProduct(
-                    barcode = scannedBarcode ?: "",
-                    name = it
+            // Récupérer l'URL de l'image
+            val imageUrl = product!!.images?.front_fr?.let { frontImage ->
+                getProductImageUrl(
+                    productBarcode = product!!.code,
+                    imageType = "front_fr",
+                    resolution = "400",
+                    rev = frontImage.rev
                 )
             }
+
+            // Créer un ScannedProduct avec l'image et autres informations
+            val scannedProduct = ScannedProduct(
+                barcode = scannedBarcode ?: "",
+                name = product!!.product_name ?: "Nom non disponible",
+                imageUrl = imageUrl
+            )
 
             // Si c'est un scan multiple
             if (isMultipleScan) {
                 // Ajouter le produit seulement s'il n'est pas déjà dans le Set
-                scannedProduct?.let {
-                    if (!scannedProducts.contains(it)) {
-                        scannedProducts.add(it)
-                        Toast.makeText(context, "${product!!.product_name} ajouté", Toast.LENGTH_SHORT).show()
-                    }
+                if (!scannedProducts.contains(scannedProduct)) {
+                    scannedProducts.add(scannedProduct)
+                    Toast.makeText(context, "${product!!.product_name} ajouté", Toast.LENGTH_SHORT).show()
                 }
                 scannedBarcode = null
                 startScan() // Relance le scan
             } else {
                 // Si c'est un scan unique
-                scannedProduct?.let {
-                    viewModel.insertProduct(it) // Insertion dans la base de données
-                }
+                viewModel.insertProduct(
+                    barcode = scannedProduct.barcode,
+                    name = scannedProduct.name,
+                    imageUrl = scannedProduct.imageUrl
+                )
                 Toast.makeText(context, "Produit enregistré: ${product!!.product_name}", Toast.LENGTH_SHORT).show()
                 finish() // Termine l'activité après le scan unique
             }
         }
     }
 
+
     // Enregistre les produits scannés en mode multiple
     private fun saveAllScannedProducts() {
         for (product in scannedProducts) {
-            viewModel.insertProduct(product)  // Insertion dans la base de données
+            viewModel.insertProduct(product.barcode, product.name, product.imageUrl) // Insertion avec imageUrl
         }
         Toast.makeText(this, "${scannedProducts.size} produit(s) enregistré(s)", Toast.LENGTH_SHORT).show()
         finish()
     }
+
 
     // Lance le scanner de code-barres
     private val barcodeLauncher = registerForActivityResult(ScanContract()) { result ->

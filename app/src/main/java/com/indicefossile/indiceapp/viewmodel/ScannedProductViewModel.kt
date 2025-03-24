@@ -11,8 +11,14 @@ class ScannedProductViewModel(private val repository: ScannedProductRepository) 
 
     val allProducts: Flow<List<ScannedProduct>> = repository.allProducts
 
-    fun insertProduct(product: ScannedProduct) {
+    fun insertProduct(barcode: String, name: String, imageUrl: String?) {
         viewModelScope.launch {
+            val product = ScannedProduct(
+                barcode = barcode,
+                name = name,
+                imageUrl = imageUrl,
+                timestamp = System.currentTimeMillis()
+            )
             repository.insertProduct(product)
         }
     }

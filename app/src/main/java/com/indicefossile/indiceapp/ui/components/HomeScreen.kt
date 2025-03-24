@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import coil.compose.rememberAsyncImagePainter
 import com.indicefossile.indiceapp.R
 import com.indicefossile.indiceapp.data.model.ScannedProduct
 import com.indicefossile.indiceapp.ui.viewmodel.ScannedProductViewModel
@@ -51,9 +52,9 @@ fun HomeScreen(
 
         // Titre de l'historique
         Text(
-            text = "Produits scannés",
+            text = "Historique",
             style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.padding(horizontal = 8.dp)
+            modifier = Modifier.padding(horizontal = 12.dp)
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -118,9 +119,10 @@ fun ScannedProductItem(product: ScannedProduct, onProductClick: (String) -> Unit
             verticalAlignment = Alignment.CenterVertically
         ) {
             Image(
-                painter = painterResource(id = R.drawable.indice_logo), // Remplace par ton icône
-                contentDescription = "Code-barres",
-                modifier = Modifier.size(40.dp)
+                painter = rememberAsyncImagePainter(product.imageUrl),
+                contentDescription = "Image du produit",
+                modifier = Modifier.size(40.dp),
+                contentScale = ContentScale.Crop
             )
 
             Spacer(modifier = Modifier.width(12.dp))
