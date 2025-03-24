@@ -33,6 +33,12 @@ class MainActivity : ComponentActivity() {
                         // Ouvrir le site du catalogue
                         val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://indicefossile.fr/catalogue"))
                         startActivity(browserIntent)
+                    },
+                    onProductClick = { barcode ->
+                        val detailIntent = Intent(this, DetailActivity::class.java).apply {
+                            putExtra("barcode", barcode)
+                        }
+                        startActivity(detailIntent)
                     }
                 )
             }
