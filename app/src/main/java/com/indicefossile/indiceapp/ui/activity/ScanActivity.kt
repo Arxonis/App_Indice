@@ -26,7 +26,7 @@ class ScanActivity : AppCompatActivity() {
         ScannedProductViewModelFactory(repository)
     }
 
-    private val scannedProducts = mutableListOf<ScannedProduct>()
+    private val scannedProducts = mutableSetOf<ScannedProduct>()  // Utilisation d'un Set pour éviter les doublons
     private var scannedBarcode: String? by mutableStateOf(null)
 
     private var isMultipleScan = false // Mode de scan
@@ -39,10 +39,12 @@ class ScanActivity : AppCompatActivity() {
             // Si l'activité est recréée, on récupère le mode choisi et l'état du scan
             isMultipleScan = savedInstanceState.getBoolean("isMultipleScan", false)
             hasScannedOnce = savedInstanceState.getBoolean("hasScannedOnce", false)
-            if (isMultipleScan == true)
-                finish()
-            setContent { ScanScreen(isMultipleScan) }
-            if (!hasScannedOnce) startScan()
+            if (isMultipleScan) {
+                setContent { ScanScreen(isMultipleScan) }
+                if (!hasScannedOnce) startScan() // Lance le scan si non fait déjà
+            } else {
+                setContent { ScanScreen(isMultipleScan) }
+            }
         } else {
             // Si c'est la première fois, on demande à l'utilisateur de choisir le mode
             showScanModeDialog()
@@ -84,7 +86,7 @@ class ScanActivity : AppCompatActivity() {
         }
 
         // Si un produit est trouvé, on le traite
-        if (product != null) {
+        if (product != null && scannedBarcode != null) {
             val scannedProduct = product!!.product_name?.let {
                 ScannedProduct(
                     barcode = scannedBarcode ?: "",
@@ -94,13 +96,20 @@ class ScanActivity : AppCompatActivity() {
 
             // Si c'est un scan multiple
             if (isMultipleScan) {
-                scannedProduct?.let { scannedProducts.add(it) }
-                Toast.makeText(context, "${product!!.product_name} ajouté", Toast.LENGTH_SHORT).show()
+                // Ajouter le produit seulement s'il n'est pas déjà dans le Set
+                scannedProduct?.let {
+                    if (!scannedProducts.contains(it)) {
+                        scannedProducts.add(it)
+                        Toast.makeText(context, "${product!!.product_name} ajouté", Toast.LENGTH_SHORT).show()
+                    }
+                }
                 scannedBarcode = null
                 startScan() // Relance le scan
             } else {
                 // Si c'est un scan unique
-                scannedProduct?.let { viewModel.insertProduct(it) }
+                scannedProduct?.let {
+                    viewModel.insertProduct(it) // Insertion dans la base de données
+                }
                 Toast.makeText(context, "Produit enregistré: ${product!!.product_name}", Toast.LENGTH_SHORT).show()
                 finish() // Termine l'activité après le scan unique
             }
@@ -110,7 +119,7 @@ class ScanActivity : AppCompatActivity() {
     // Enregistre les produits scannés en mode multiple
     private fun saveAllScannedProducts() {
         for (product in scannedProducts) {
-            viewModel.insertProduct(product)
+            viewModel.insertProduct(product)  // Insertion dans la base de données
         }
         Toast.makeText(this, "${scannedProducts.size} produit(s) enregistré(s)", Toast.LENGTH_SHORT).show()
         finish()
@@ -120,10 +129,10 @@ class ScanActivity : AppCompatActivity() {
     private val barcodeLauncher = registerForActivityResult(ScanContract()) { result ->
         if (result.contents == null) {
             if (isMultipleScan && scannedProducts.isNotEmpty()) {
-                saveAllScannedProducts()
+                saveAllScannedProducts() // Sauvegarde tous les produits scannés en mode multiple
             } else {
                 Toast.makeText(this, "Scan annulé", Toast.LENGTH_SHORT).show()
-                finish()
+                finish() // Annule et ferme si pas de scan
             }
         } else {
             scannedBarcode = result.contents
@@ -134,7 +143,6 @@ class ScanActivity : AppCompatActivity() {
 
     // Démarre le scanner
     private fun startScan() {
-
         val options = ScanOptions().apply {
             setDesiredBarcodeFormats(ScanOptions.ALL_CODE_TYPES)
             setPrompt(if (isMultipleScan) "Scannez un produit (annulez pour terminer)" else "Scannez un code-barres")
@@ -145,3 +153,4 @@ class ScanActivity : AppCompatActivity() {
         barcodeLauncher.launch(options) // Lance le scanner
     }
 }
+
