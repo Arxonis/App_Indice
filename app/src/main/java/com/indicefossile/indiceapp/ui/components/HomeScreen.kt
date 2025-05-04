@@ -1,6 +1,7 @@
 package com.indicefossile.indiceapp.ui.components
 
 import android.os.Build
+import androidx.annotation.OptIn
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -16,9 +17,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.media3.common.util.Log
+import androidx.media3.common.util.UnstableApi
 import coil.compose.rememberAsyncImagePainter
 import com.indicefossile.indiceapp.R
 import com.indicefossile.indiceapp.data.model.ScannedProduct
@@ -62,10 +67,22 @@ fun HomeScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Deux colonnes
-        Row(modifier = Modifier.weight(1f)) {
+        var showHistory by remember { mutableStateOf(true) }
 
-            // Colonne gauche
+        Text(
+            text = if (showHistory) "→ Voir les statistiques" else "← Voir l’historique",
+            color = MaterialTheme.colorScheme.primary,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .clickable { showHistory = !showHistory }
+                .padding(vertical = 8.dp)
+        )
+
+        // Deux colonnes
+        if (showHistory) {
+
+            // Colonne gauche (Historique des produits)
             if (scannedProducts.isEmpty()) {
                 Box(
                     modifier = Modifier
@@ -73,7 +90,10 @@ fun HomeScreen(
                         .fillMaxHeight(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("Aucun produit scanné pour le moment.", style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        "Aucun produit scanné pour le moment.",
+                        style = MaterialTheme.typography.bodyLarge
+                    )
                 }
             } else {
                 LazyColumn(
@@ -86,64 +106,94 @@ fun HomeScreen(
                     }
                 }
             }
+        }
+        else {
+                // Colonne droite (Graphique avec période)
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                        .padding(start = 8.dp)
+                ) {
+                    var selectedPeriod by remember { mutableStateOf("Semaine") }
 
-            // Colonne droite
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState())
-                    .padding(start = 8.dp)
-            ) {
-                var selectedPeriod by remember { mutableStateOf("Semaine") }
+                    // Exemple de données
+                    val fakeData = listOf(
+                        Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -6) }.time to 4.2f,
+                        Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -5) }.time to 3.8f,
+                        Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -4) }.time to 5.0f,
+                        Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -3) }.time to 4.1f,
+                        Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -2) }.time to 4.7f,
+                        Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }.time to 3.5f,
+                        Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 0) }.time to 4.0f
+                    )
 
-                // Exemple de données
-                val fakeData = listOf(
-                    Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -6) }.time to 4.2f,
-                    Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -5) }.time to null,
-                    Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -4) }.time to 3.8f,
-                    Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -3) }.time to null,
-                    Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -2) }.time to 5.0f,
-                    Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }.time to 4.1f,
-                    Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 0) }.time to 4.7f
-                )
+                    Text(
+                        text = "Statistiques",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
 
-                Text(
-                    text = "Statistiques",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-
-                // Sélecteur de période
-                Row(horizontalArrangement = Arrangement.SpaceEvenly) {
-                    listOf("Jour", "Semaine", "Mois", "Année").forEach { period ->
-                        Button(
-                            onClick = { selectedPeriod = period },
-                            modifier = Modifier
-                                .padding(4.dp)
-                                .weight(1f),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (selectedPeriod == period)
-                                    MaterialTheme.colorScheme.primary
-                                else
-                                    MaterialTheme.colorScheme.secondary
-                            )
-                        ) {
-                            Text(text = period)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf("Jour", "Semaine", "Mois", "Année").forEach { period ->
+                            Button(
+                                onClick = { selectedPeriod = period },
+                                modifier = Modifier
+                                    .weight(1f),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (selectedPeriod == period)
+                                        MaterialTheme.colorScheme.primary
+                                    else
+                                        MaterialTheme.colorScheme.secondary
+                                )
+                            ) {
+                                Text(
+                                    text = period,
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                         }
                     }
+
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Affichage de la période sélectionnée
+                    Text(
+                        text = "Période sélectionnée: $selectedPeriod",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    // Graphique
+                    SimpleLineChart(fakeData, selectedPeriod)
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Trois lignes
+                    Text(
+                        "CO₂ : —",
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+                    Text(
+                        "Énergie : —",
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+                    Text(
+                        "Note globale : —",
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
                 }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Graphique
-                SimpleLineChart(fakeData, selectedPeriod)
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Trois lignes
-                Text("CO₂ : —", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(vertical = 4.dp))
-                Text("Énergie : —", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(vertical = 4.dp))
-                Text("Note globale : —", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(vertical = 4.dp))
             }
         }
 
@@ -173,7 +223,7 @@ fun HomeScreen(
             }
         }
     }
-}
+
 
 @Composable
 fun ScannedProductItem(product: ScannedProduct, onProductClick: (String) -> Unit) {
@@ -208,34 +258,151 @@ fun ScannedProductItem(product: ScannedProduct, onProductClick: (String) -> Unit
     }
 }
 
-@Composable
+
+@OptIn(UnstableApi::class) @Composable
 fun SimpleLineChart(
     rawData: List<Pair<Date, Float?>>,
     period: String
 ) {
-    // Filtrer les données selon la période sélectionnée
-    val filteredData = when (period) {
-        "Jour" -> rawData.filter { it.first == Date() }
-        "Semaine" -> rawData.filter { it.first.after(Date(System.currentTimeMillis() - 7 * 24 * 60 * 60 * 1000)) }
-        "Mois" -> rawData.filter { it.first.month == Date().month }
-        "Année" -> rawData.filter { it.first.year == Date().year }
-        else -> rawData
+    // Fonction pour grouper les données par période
+    fun groupDataByPeriod(data: List<Pair<Date, Float?>>): List<Pair<Any, Float?>> {
+        Log.d("SimpleLineChart", "Raw data size: ${data.size}")
+
+        // Affichage des données brutes pour débogage
+        data.forEach { pair ->
+            Log.d("SimpleLineChart", "Date: ${pair.first}, Value: ${pair.second}")
+        }
+
+        return try {
+            when (period) {
+                "Jour" -> {
+                    data.groupBy { SimpleDateFormat("dd", Locale.getDefault()).format(it.first) }
+                        .map { Pair(it.key, it.value.mapNotNull { it.second }.average().toFloat()) }
+                }
+                "Semaine" -> {
+                    data.groupBy { SimpleDateFormat("yyyy-ww", Locale.getDefault()).format(it.first) }
+                        .map { Pair(it.key, it.value.mapNotNull { it.second }.average().toFloat()) }
+                }
+                "Mois" -> {
+                    data.groupBy { SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(it.first) }
+                        .map { Pair(it.key, it.value.mapNotNull { it.second }.average().toFloat()) }
+                }
+                "Année" -> {
+                    data.groupBy { SimpleDateFormat("yyyy", Locale.getDefault()).format(it.first) }
+                        .map { Pair(it.key, it.value.mapNotNull { it.second }.average().toFloat()) }
+                }
+                else -> data
+            }
+        } catch (e: Exception) {
+            Log.e("SimpleLineChart", "Error during grouping by period", e)
+            emptyList() // Retourne une liste vide si une erreur survient
+        }
     }
 
-    // Dessiner un graphique simplifié
+    // Assurer que nous avons des données valides
+    val groupedData = groupDataByPeriod(rawData)
+
+    Log.d("SimpleLineChart", "Grouped data size: ${groupedData.size}")
+
+    // Vérifier si les données regroupées sont vides ou non
+    if (groupedData.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("Aucune donnée à afficher", style = MaterialTheme.typography.bodyLarge)
+        }
+        return
+    }
+
+    // Dessiner le graphique
     androidx.compose.foundation.Canvas(modifier = Modifier
         .fillMaxWidth()
-        .height(200.dp)
+        .height(250.dp)
         .padding(16.dp)) {
-        // Exemple de dessin de points pour chaque donnée filtrée
-        filteredData.forEachIndexed { index, (_, value) ->
-            val x = index * 60f // Espacement des points
-            val y = value?.times(30) ?: 0f // Hauteur du point
+
+        // Dessiner les axes et les valeurs en ordonnée
+        drawLine(
+            color = Color.Black,
+            start = Offset(30f, 0f),
+            end = Offset(30f, size.height),
+            strokeWidth = 2f
+        )
+
+        drawLine(
+            color = Color.Black,
+            start = Offset(30f, size.height - 20f),
+            end = Offset(size.width, size.height - 20f),
+            strokeWidth = 2f
+        )
+
+        // Affichage des valeurs en ordonnée (Y) pour le CO2 (Kg)
+        val maxValue = groupedData.maxOfOrNull { it.second ?: 0f } ?: 0f
+        val step = maxValue / 5
+
+        for (i in 0..5) {
+            val yPosition = size.height - 20f - (i * (size.height - 40f) / 5)
+            drawContext.canvas.nativeCanvas.apply {
+                val paint = android.graphics.Paint().apply {
+                    color = android.graphics.Color.BLACK
+                    textSize = 16f
+                    textAlign = android.graphics.Paint.Align.RIGHT
+                }
+                drawText(
+                    "${(step * i).toInt()} kg CO₂", // Affiche le label avec "kg CO₂"
+                    20f, // Position X
+                    yPosition, // Position Y
+                    paint
+                )
+            }
+        }
+
+        // Dessiner les points
+        groupedData.forEachIndexed { index, (periodKey, value) ->
+            val x = index * (size.width / groupedData.size) + 40f // Espacement des points
+            val y = size.height - 20f - (value?.times((size.height - 40f) / maxValue) ?: 0f) // Hauteur du point
             drawCircle(
                 color = Color.Blue,
-                radius = 4f,
-                center = Offset(x, 200f - y) // Inverser y pour l'orientation
+                radius = 6f,
+                center = Offset(x, y)
             )
+
+            // Afficher les labels sous chaque point (jour, mois, année selon la période)
+            drawContext.canvas.nativeCanvas.apply {
+                val paint = android.graphics.Paint().apply {
+                    color = android.graphics.Color.BLACK
+                    textSize = 30f
+                    textAlign = android.graphics.Paint.Align.CENTER // Centre le texte sous les points
+                }
+                val label = try {
+                    when (period) {
+                        "Jour" -> {
+                            val date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(periodKey.toString())
+                            SimpleDateFormat("dd/MM", Locale.getDefault()).format(date!!)
+                        }
+                        "Semaine" -> {
+                            // Pour afficher par ex. "Semaine 18"
+                            val parts = periodKey.toString().split("-")
+                            if (parts.size == 2) "Sem. ${parts[1]}" else periodKey.toString()
+                        }
+                        "Mois" -> {
+                            val date = SimpleDateFormat("yyyy-MM", Locale.getDefault()).parse(periodKey.toString())
+                            SimpleDateFormat("MM/yyyy", Locale.getDefault()).format(date!!)
+                        }
+                        "Année" -> periodKey.toString()
+                        else -> periodKey.toString()
+                    }
+                } catch (e: Exception) {
+                    Log.e("SimpleLineChart", "Erreur de parsing label", e)
+                    periodKey.toString()
+                }
+
+
+
+                drawText(
+                    label,
+                    x, // Position X
+                    size.height - 5f, // Position Y (légèrement en dessous des points)
+                    paint
+                )
+            }
         }
     }
 }

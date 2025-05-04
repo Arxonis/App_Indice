@@ -14,7 +14,6 @@ data class Product(
     val nutrition_grades: String?,
     val nutriscore_data: NutriscoreData?,
     val nutriments: Map<String, Any>?,
-    // Remarquez que nous n'incluons pas directement une propriété agribalyse ici
     val ecoscore_data: EcoscoreData?,
     val nova_groups_tags: List<String>?,
     val images: Images?

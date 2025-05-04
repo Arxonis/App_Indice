@@ -163,7 +163,37 @@ fun ProductDetailScreen(product: Product, modifier: Modifier = Modifier) {
             }
             Spacer(modifier = Modifier.height(16.dp))
 
-
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.medium,
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Column (modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Fiabilité",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    Spacer(modifier = Modifier.padding(10.dp))
+                    product.ecoscore_data?.agribalyse?.let { agr ->
+                        DetailItem(label = "DQR (Indice de fiabilité)", value = agr.dqr?.toBigDecimal()?.setScale(3, RoundingMode.HALF_UP)?.toDouble().toString() ?: "?")
+                        val noteSur10 = (agr.dqr?.toBigDecimalOrNull()
+                            ?.setScale(3, RoundingMode.HALF_UP)
+                            ?.let { 10 - 2.5f * (it.toFloat() - 1) }
+                            ?.coerceIn(0f, 10f)?.toBigDecimal()?.setScale(3, RoundingMode.HALF_UP)
+                            ?.toDouble()
+                            ?.toString() + " / 10")
+                        DetailItem(label = "Note", value = noteSur10)
+                    } ?: Text(
+                        text = "Données Agribalyse non disponibles",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Carte Détails CO₂ - Agribalyse (accès via ecoscore_data.agribalyse selon votre modèle)
             Card(
@@ -188,12 +218,12 @@ fun ProductDetailScreen(product: Product, modifier: Modifier = Modifier) {
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     product.ecoscore_data?.agribalyse?.let { agr ->
-                        DetailItem(label = "Agriculture", value = agr.co2_agriculture?.toBigDecimal()?.setScale(3, RoundingMode.HALF_UP)?.toDouble().toString() ?: "?")
-                        DetailItem(label = "Consumption", value = agr.co2_consumption?.toBigDecimal()?.setScale(3, RoundingMode.HALF_UP)?.toDouble().toString() ?: "?")
-                        DetailItem(label = "Distribution", value = agr.co2_distribution?.toBigDecimal()?.setScale(3, RoundingMode.HALF_UP)?.toDouble().toString() ?: "?")
-                        DetailItem(label = "Packaging", value = agr.co2_packaging?.toBigDecimal()?.setScale(3, RoundingMode.HALF_UP)?.toDouble().toString() ?: "?")
-                        DetailItem(label = "Processing", value = agr.co2_processing?.toBigDecimal()?.setScale(3, RoundingMode.HALF_UP)?.toDouble().toString() ?: "?")
-                        DetailItem(label = "Transportation", value = agr.co2_transportation?.toBigDecimal()?.setScale(3, RoundingMode.HALF_UP)?.toDouble().toString() ?: "?")
+                        DetailItem(label = "Agriculture", value = agr.co2_agriculture?.toBigDecimal()?.setScale(3, RoundingMode.HALF_UP)?.toDouble().toString() ?: "Non disponible")
+                        DetailItem(label = "Consumption", value = agr.co2_consumption?.toBigDecimal()?.setScale(3, RoundingMode.HALF_UP)?.toDouble().toString() ?: "Non disponible")
+                        DetailItem(label = "Distribution", value = agr.co2_distribution?.toBigDecimal()?.setScale(3, RoundingMode.HALF_UP)?.toDouble().toString() ?: "Non disponible")
+                        DetailItem(label = "Packaging", value = agr.co2_packaging?.toBigDecimal()?.setScale(3, RoundingMode.HALF_UP)?.toDouble().toString() ?: "Non disponible")
+                        DetailItem(label = "Processing", value = agr.co2_processing?.toBigDecimal()?.setScale(3, RoundingMode.HALF_UP)?.toDouble().toString() ?: "Non disponible")
+                        DetailItem(label = "Transportation", value = agr.co2_transportation?.toBigDecimal()?.setScale(3, RoundingMode.HALF_UP)?.toDouble().toString() ?: "Non disponible")
                     } ?: Text(
                         text = "Données Agribalyse non disponibles",
                         style = MaterialTheme.typography.bodyMedium,
