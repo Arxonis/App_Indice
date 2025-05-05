@@ -5,16 +5,18 @@ import androidx.annotation.OptIn
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.nativeCanvas
@@ -25,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
 import coil.compose.rememberAsyncImagePainter
+import com.google.android.material.color.MaterialColors
 import com.indicefossile.indiceapp.R
 import com.indicefossile.indiceapp.data.model.ScannedProduct
 import com.indicefossile.indiceapp.ui.viewmodel.ScannedProductViewModel
@@ -69,14 +72,6 @@ fun HomeScreen(
                         .fillMaxWidth()
                         .height(120.dp),
                     contentScale = ContentScale.Fit
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text(
-                    text = "Historique",
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.fillMaxWidth().wrapContentWidth(Alignment.CenterHorizontally)
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -179,22 +174,44 @@ fun HomeScreen(
             }
         }
 
-        // Boutons fixes en bas
-        Row(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            Button(onClick = onScanClick) {
-                Text("Scanner")
-            }
-            Button(onClick = onWebsiteClick) {
-                Text("Catalogue")
+
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                Button(
+                    onClick = onScanClick,
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF006600)),
+                    border = BorderStroke(2.dp, Color.Black),
+                    modifier = Modifier
+                        .defaultMinSize(minHeight = 0.dp, minWidth = 0.dp)
+                ) {
+                    Text(
+                        text = "Scanner",
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                }
+
+                Button(
+                    onClick = onWebsiteClick,
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF006600)),
+                    border = BorderStroke(2.dp, Color.Black),
+                    modifier = Modifier
+                        .defaultMinSize(minHeight = 0.dp, minWidth = 0.dp)
+                ) {
+                    Text(
+                        text = "Catalogue",
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                }
             }
         }
-    }
+
 }
 
 
@@ -211,27 +228,45 @@ fun ScannedProductItem(product: ScannedProduct, onProductClick: (String) -> Unit
             .clickable { onProductClick(product.barcode) },
         tonalElevation = 2.dp
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .padding(16.dp)
                 .fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Image(
                 painter = rememberAsyncImagePainter(product.imageUrl),
                 contentDescription = "Image du produit",
-                modifier = Modifier.size(80.dp),
+                modifier = Modifier
+                    .size(80.dp)
+                    .border(2.dp, Color.Black, shape = RoundedCornerShape(8.dp))
+                    .clip(RoundedCornerShape(8.dp)),
                 contentScale = ContentScale.Crop
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.width(16.dp))
 
-            Text("Nom: ${product.name}", style = MaterialTheme.typography.bodyLarge)
-            Text("Code-barres: ${product.barcode}", style = MaterialTheme.typography.bodyMedium)
-            Text("Scanné le : $formattedDate", style = MaterialTheme.typography.bodySmall)
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = "${product.name}",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color(0xff238a03)
+                )
+                Text(
+                    text = "Code-barres: ${product.barcode}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = "Scanné le : $formattedDate",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
         }
     }
 }
+
 
 
 @OptIn(UnstableApi::class) @Composable

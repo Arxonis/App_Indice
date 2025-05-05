@@ -65,10 +65,8 @@ data class Agribalyse(
     val version: String?
 )
 
-// Si vous avez besoin de modéliser les ajustements ou les informations manquantes, vous pouvez ajouter :
 
 data class Adjustments(
-    // Exemple de champ
     val origins_of_ingredients: OriginsOfIngredients?
 )
 
@@ -88,7 +86,7 @@ data class OriginsOfIngredients(
 )
 
 data class AggregatedOrigin(
-    val epi_score: String?, // Parfois sous forme de chaîne, vérifiez le type réel
+    val epi_score: String?,
     val origin: String?,
     val percent: Int?,
     val transportation_score: Int?
