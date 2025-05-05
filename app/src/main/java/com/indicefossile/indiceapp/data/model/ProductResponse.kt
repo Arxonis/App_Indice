@@ -74,16 +74,16 @@ data class Adjustments(
 
 data class OriginsOfIngredients(
     val aggregated_origins: List<AggregatedOrigin>?,
-    val epi_score: Int?,
-    val epi_value: Int?,
+    val epi_score: Float?,
+    val epi_value: Float?,
     val origins_from_categories: List<String>?,
     val origins_from_origins_field: List<String>?,
-    val transportation_score: Int?,
-    val transportation_scores: Map<String, Int>?,
-    val transportation_value: Int?,
-    val transportation_values: Map<String, Int>?,
-    val value: Int?,
-    val values: Map<String, Int>?,
+    val transportation_score: Float?,
+    val transportation_scores: Map<String, Float>?,
+    val transportation_value: Float?,
+    val transportation_values: Map<String, Float>?,
+    val value: Float?,
+    val values: Map<String, Float>?,
     val warning: String?
 )
 

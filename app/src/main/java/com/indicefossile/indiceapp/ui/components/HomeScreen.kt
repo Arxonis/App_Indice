@@ -40,94 +40,81 @@ fun HomeScreen(
     onProductClick: (String) -> Unit,
 ) {
     val scannedProducts by viewModel.allProducts.collectAsState(initial = emptyList())
+    var showHistory by remember { mutableStateOf(true) }
+    var selectedPeriod by remember { mutableStateOf("Semaine") }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .padding(16.dp)
-    ) {
-        // Logo
-        Image(
-            painter = painterResource(id = R.drawable.indice_logo),
-            contentDescription = "Logo Indice Fossile",
+    val fakeData = listOf(
+        Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -6) }.time to 4.2f,
+        Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -5) }.time to 3.8f,
+        Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -4) }.time to 5.0f,
+        Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -3) }.time to 4.1f,
+        Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -2) }.time to 4.7f,
+        Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }.time to 3.5f,
+        Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 0) }.time to 4.0f
+    )
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(120.dp),
-            contentScale = ContentScale.Fit
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = "Historique",
-            style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.align(Alignment.CenterHorizontally)
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        var showHistory by remember { mutableStateOf(true) }
-
-        Text(
-            text = if (showHistory) "→ Voir les statistiques" else "← Voir l’historique",
-            color = MaterialTheme.colorScheme.primary,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier
-                .align(Alignment.CenterHorizontally)
-                .clickable { showHistory = !showHistory }
-                .padding(vertical = 8.dp)
-        )
-
-        // Deux colonnes
-        if (showHistory) {
-
-            // Colonne gauche (Historique des produits)
-            if (scannedProducts.isEmpty()) {
-                Box(
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .padding(horizontal = 16.dp),
+            contentPadding = PaddingValues(bottom = 100.dp)
+        ) {
+            item {
+                Image(
+                    painter = painterResource(id = R.drawable.indice_logo),
+                    contentDescription = "Logo Indice Fossile",
                     modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        "Aucun produit scanné pour le moment.",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 8.dp)
-                ) {
+                        .fillMaxWidth()
+                        .height(120.dp),
+                    contentScale = ContentScale.Fit
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Historique",
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.fillMaxWidth().wrapContentWidth(Alignment.CenterHorizontally)
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = if (showHistory) "→ Voir les statistiques" else "← Voir l’historique",
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.fillMaxWidth().wrapContentWidth(Alignment.CenterHorizontally)
+                        .clickable { showHistory = !showHistory }
+                        .padding(vertical = 8.dp)
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            if (showHistory) {
+                if (scannedProducts.isEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillParentMaxHeight()
+                                .padding(vertical = 32.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                "Aucun produit scanné pour le moment.",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                        }
+                    }
+                } else {
                     items(scannedProducts) { product ->
                         ScannedProductItem(product, onProductClick)
                     }
                 }
-            }
-        }
-        else {
-                // Colonne droite (Graphique avec période)
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .verticalScroll(rememberScrollState())
-                        .padding(start = 8.dp)
-                ) {
-                    var selectedPeriod by remember { mutableStateOf("Semaine") }
-
-                    // Exemple de données
-                    val fakeData = listOf(
-                        Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -6) }.time to 4.2f,
-                        Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -5) }.time to 3.8f,
-                        Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -4) }.time to 5.0f,
-                        Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -3) }.time to 4.1f,
-                        Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -2) }.time to 4.7f,
-                        Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }.time to 3.5f,
-                        Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 0) }.time to 4.0f
-                    )
-
+            } else {
+                item {
                     Text(
                         text = "Statistiques",
                         style = MaterialTheme.typography.titleMedium,
@@ -143,8 +130,7 @@ fun HomeScreen(
                         listOf("Jour", "Semaine", "Mois", "Année").forEach { period ->
                             Button(
                                 onClick = { selectedPeriod = period },
-                                modifier = Modifier
-                                    .weight(1f),
+                                modifier = Modifier.weight(1f),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = if (selectedPeriod == period)
                                         MaterialTheme.colorScheme.primary
@@ -162,22 +148,18 @@ fun HomeScreen(
                         }
                     }
 
-
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Affichage de la période sélectionnée
                     Text(
                         text = "Période sélectionnée: $selectedPeriod",
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
 
-                    // Graphique
                     SimpleLineChart(fakeData, selectedPeriod)
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Trois lignes
                     Text(
                         "CO₂ : —",
                         style = MaterialTheme.typography.bodyLarge,
@@ -197,32 +179,25 @@ fun HomeScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Boutons bas
+        // Boutons fixes en bas
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            Button(
-                onClick = onScanClick,
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 8.dp)
-            ) {
+            Button(onClick = onScanClick) {
                 Text("Scanner")
             }
-            Button(
-                onClick = onWebsiteClick,
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 8.dp)
-            ) {
+            Button(onClick = onWebsiteClick) {
                 Text("Catalogue")
             }
         }
     }
+}
+
+
 
 
 @Composable
@@ -266,12 +241,6 @@ fun SimpleLineChart(
 ) {
     // Fonction pour grouper les données par période
     fun groupDataByPeriod(data: List<Pair<Date, Float?>>): List<Pair<Any, Float?>> {
-        Log.d("SimpleLineChart", "Raw data size: ${data.size}")
-
-        // Affichage des données brutes pour débogage
-        data.forEach { pair ->
-            Log.d("SimpleLineChart", "Date: ${pair.first}, Value: ${pair.second}")
-        }
 
         return try {
             when (period) {
@@ -294,7 +263,6 @@ fun SimpleLineChart(
                 else -> data
             }
         } catch (e: Exception) {
-            Log.e("SimpleLineChart", "Error during grouping by period", e)
             emptyList() // Retourne une liste vide si une erreur survient
         }
     }
@@ -302,7 +270,6 @@ fun SimpleLineChart(
     // Assurer que nous avons des données valides
     val groupedData = groupDataByPeriod(rawData)
 
-    Log.d("SimpleLineChart", "Grouped data size: ${groupedData.size}")
 
     // Vérifier si les données regroupées sont vides ou non
     if (groupedData.isEmpty()) {
