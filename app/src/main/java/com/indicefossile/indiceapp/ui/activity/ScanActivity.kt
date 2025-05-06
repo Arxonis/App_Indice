@@ -70,12 +70,22 @@ class ScanActivity : AppCompatActivity() {
     }
 
     fun extractNumericValue(value: String): Double? {
-        val isKg = value.contains("kg", ignoreCase = true)
-        val numericValue = value.replace("[^0-9.,]".toRegex(), "")
-            .replace(",", ".")
-        val result = numericValue.toDoubleOrNull()
-        return if (result != null && isKg) result * 1000 else result
+        val regex = """(\d[\d.,]*)(\s*(kg|g|l|cl))?""".toRegex(RegexOption.IGNORE_CASE)
+        val matchResult = regex.find(value) ?: return null
+        val numericValue = matchResult.groupValues[1].replace(",", ".")
+        val unit = matchResult.groupValues[3]?.lowercase()
+
+        val result = numericValue.toDoubleOrNull() ?: return null
+        return when (unit) {
+            "kg" -> result * 1000
+            "g" -> result
+            "l" -> result * 1000
+            "cl" -> result * 10
+            else -> result
+        }
     }
+
+
 
 
     @Composable
@@ -90,7 +100,6 @@ class ScanActivity : AppCompatActivity() {
         }
 
         if (product != null && scannedBarcode != null) {
-            // Récupérer l'URL de l'image
             val imageUrl = product!!.images?.front_fr?.let { frontImage ->
                 getProductImageUrl(
                     productBarcode = product!!.code,

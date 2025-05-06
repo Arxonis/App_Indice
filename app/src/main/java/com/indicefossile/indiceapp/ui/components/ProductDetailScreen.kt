@@ -29,7 +29,6 @@ import com.indicefossile.indiceapp.ui.utils.getProductImageUrl
 import java.math.BigDecimal
 import java.math.RoundingMode
 
-// Fonctions d'aide pour mapper les scores aux images disponibles dans vos ressources.
 @Composable
 fun getNutriscoreImageResource(grade: String?): Int {
     return when (grade?.lowercase()) {
@@ -74,7 +73,6 @@ fun getNovaImageResource(novaTag: String?): Int {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductDetailScreenWithTopBar(product: Product) {
-    // Récupère l'activité pour fermer l'écran lors du clic sur le bouton retour
     val activity = LocalContext.current as? Activity
     Scaffold(
         topBar = {
@@ -146,7 +144,45 @@ fun ProductDetailScreen(product: Product, modifier: Modifier = Modifier) {
             )
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Carte Informations Générales (Marque, Quantité)
+            val totalCO2 = product.ecoscore_data?.agribalyse?.co2_total.toString().toBigDecimal()
+                .setScale(3, RoundingMode.HALF_UP)
+                ?.toDouble().toString()
+
+            totalCO2.let {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium,
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "Total CO₂e par kg de produit:",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = "$it kg CO₂e",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.medium,
@@ -172,7 +208,7 @@ fun ProductDetailScreen(product: Product, modifier: Modifier = Modifier) {
             ) {
                 Column (modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "Fiabilité",
+                        text = "Fiabilité des données :",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.error
@@ -186,7 +222,7 @@ fun ProductDetailScreen(product: Product, modifier: Modifier = Modifier) {
                             ?.coerceIn(0f, 10f)?.toBigDecimal()?.setScale(3, RoundingMode.HALF_UP)
                             ?.toDouble()
                             ?.toString() + " / 10")
-                        DetailItem(label = "Note", value = noteSur10)
+                        DetailItem(label = "Note sur 10 :", value = noteSur10)
                     } ?: Text(
                         text = "Données Agribalyse non disponibles",
                         style = MaterialTheme.typography.bodyLarge,
@@ -196,7 +232,6 @@ fun ProductDetailScreen(product: Product, modifier: Modifier = Modifier) {
             }
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Carte Détails CO₂ - Agribalyse (accès via ecoscore_data.agribalyse selon votre modèle)
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.medium,
@@ -205,13 +240,13 @@ fun ProductDetailScreen(product: Product, modifier: Modifier = Modifier) {
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "Détails en kg de CO₂e",
+                        text = "Détails en kg de CO₂e par article",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.error
                     )
                     product.ecoscore_data?.agribalyse?.let { agr ->
-                        DetailItem(label = "Total",
+                        DetailItem(label = "Total par article",
                             value = agr.co2_total?.toBigDecimal()?.let { co2Total ->
                                 product.quantity?.let {
                                     extractNumericValue(it)?.let { weight ->
@@ -431,12 +466,22 @@ fun ProductDetailScreen(product: Product, modifier: Modifier = Modifier) {
 }
 
 fun extractNumericValue(value: String): Double? {
-    val isKg = value.contains("kg", ignoreCase = true)
-    val numericValue = value.replace("[^0-9.,]".toRegex(), "")
-        .replace(",", ".")
-    val result = numericValue.toDoubleOrNull()
-    return if (result != null && isKg) result * 1000 else result
+    val regex = """(\d[\d.,]*)(\s*(kg|g|l|cl|ml))?""".toRegex(RegexOption.IGNORE_CASE)
+    val matchResult = regex.find(value) ?: return null
+    val numericValue = matchResult.groupValues[1].replace(",", ".")
+    val unit = matchResult.groupValues[3]?.lowercase()
+
+    val result = numericValue.toDoubleOrNull() ?: return null
+    return when (unit) {
+        "kg" -> result * 1000
+        "g" -> result
+        "l" -> result * 1000
+        "cl" -> result * 10
+        "ml" -> result
+        else -> result
+    }
 }
+
 
 @Composable
 fun DetailItem(label: String, value: String) {

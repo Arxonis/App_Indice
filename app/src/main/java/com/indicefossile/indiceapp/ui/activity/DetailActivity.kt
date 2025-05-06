@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.indicefossile.indiceapp.ui.components.ProductDetailScreen
+import com.indicefossile.indiceapp.ui.components.ProductDetailScreenWithTopBar
 import com.indicefossile.indiceapp.viewmodel.ProductViewModel
 
 class DetailActivity : ComponentActivity() {
@@ -37,7 +38,7 @@ class DetailActivity : ComponentActivity() {
 
             Surface(modifier = Modifier.fillMaxSize()) {
                 if (product != null) {
-                    ProductDetailScreen(product = product!!)
+                    ProductDetailScreenWithTopBar(product = product!!)
                 } else {
                     Box(
                         modifier = Modifier.fillMaxSize(),
