@@ -4,12 +4,20 @@ import android.annotation.SuppressLint
 import android.os.Build
 import androidx.annotation.OptIn
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.dp
+import kotlin.math.*
+
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.border
@@ -17,20 +25,23 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.center
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.toUpperCase
+import androidx.compose.ui.unit.center
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
@@ -42,6 +53,13 @@ import com.indicefossile.indiceapp.ui.viewmodel.ScannedProductViewModel
 import com.patrykandpatrick.vico.core.extension.sumOf
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
+import kotlin.math.atan2
+import kotlin.math.min
+import java.util.Locale
+
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -156,7 +174,7 @@ fun HomeScreen(
                     }
 
                     if (showPieChart) {
-                        PieChart(co2ByGreenScore)
+                        InteractivePieChart(co2ByGreenScore)
                     } else {
                         Row(
                             modifier = Modifier
@@ -530,13 +548,20 @@ fun calculateCO2ByGreenScore(products: List<ScannedProduct>): Map<String, Float>
     return products
         .filter { it.CO2_TOTAL != null && it.GreenScore != null }
         .groupBy { it.GreenScore!!.lowercase() }
-        .mapValues { (_, list) -> list.sumOf { it.CO2_TOTAL!!.toFloat() } }
+        .mapValues { (_, list) ->
+            list.sumOf { it.CO2_TOTAL!!.toFloat() }
+        }
 }
 
+
 @Composable
-fun PieChart(data: Map<String, Float>) {
-    val total = data.values.sum()
+fun InteractivePieChart(
+    data: Map<String, Float>,
+    modifier: Modifier = Modifier
+) {
+    val total = data.values.sum().takeIf { it > 0 } ?: return
     val proportions = data.mapValues { it.value / total }
+    val sortedData = proportions.toList().sortedByDescending { it.second }
 
     val colors = mapOf(
         "a-plus" to Color(0xFF166E25),
@@ -547,36 +572,109 @@ fun PieChart(data: Map<String, Float>) {
         "e" to Color(0xFFA12323)
     )
 
-    val sortedData = proportions.toList().sortedByDescending { it.second }
+    var selectedScore by remember { mutableStateOf<String?>(null) }
 
-    Canvas(modifier = Modifier
-        .fillMaxWidth()
-        .height(300.dp)
-        .padding(16.dp)) {
-        var startAngle = -90f
-        sortedData.forEach { (score, proportion) ->
-            val sweepAngle = 360 * proportion
-            drawArc(
-                color = colors[score] ?: Color.Gray,
-                startAngle = startAngle,
-                sweepAngle = sweepAngle,
-                useCenter = true
-            )
-            startAngle += sweepAngle
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+        ) {
+            Canvas(modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(Unit) {
+                    detectTapGestures { offset ->
+                        val size = this.size
+                        val width = size.width
+                        val height = size.height
+
+                        // Calcul du rayon minimal entre la largeur et la hauteur
+                        val radius = if (width < height) width / 2f else height / 2f
+
+                        val center = Offset(width / 2f, height / 2f)
+                        val touchVector = offset - center
+                        val touchDistance = touchVector.getDistance()
+
+                        if (touchDistance > radius) return@detectTapGestures
+
+                        // Calcul de l'angle de touche en degrés entre -180 et 180
+                        var touchAngle = Math.toDegrees(atan2(touchVector.y.toDouble(), touchVector.x.toDouble())).toFloat()
+                        touchAngle = (touchAngle + 360f + 90f) % 360f // Normaliser entre [0, 360)
+
+                        var angleAccumulator = 0f
+                        for ((score, proportion) in sortedData) {
+                            val sweep = 360 * proportion
+                            if (touchAngle in angleAccumulator..(angleAccumulator + sweep)) {
+                                selectedScore = score
+                                break
+                            }
+                            angleAccumulator += sweep
+                        }
+                    }
+                }
+            ) {
+                val width = size.width
+                val height = size.height
+
+                var startAngle = -90f
+
+                // Dessiner les arcs
+                sortedData.forEach { (score, proportion) ->
+                    val sweepAngle = 360 * proportion
+                    val color = colors[score] ?: Color.Gray
+
+                    drawArc(
+                        color = color,
+                        startAngle = startAngle,
+                        sweepAngle = sweepAngle,
+                        useCenter = true
+                    )
+
+                    startAngle += sweepAngle
+                }
+
+                // Dessiner la bordure noire pour la section sélectionnée
+                selectedScore?.let { score ->
+                    val sweepAngle = 360 * (proportions[score] ?: 0f)
+                    val color = colors[score] ?: Color.Gray
+
+                    // Dessiner la bordure noire
+                    var angleAccumulator = 0f
+                    for ((score, proportion) in sortedData) {
+                        val sweep = 360 * proportion
+                        if (score == selectedScore) {
+                            val arcStartAngle = angleAccumulator - 90
+                            drawArc(
+                                color = Color.Black,
+                                startAngle = arcStartAngle,
+                                sweepAngle = sweepAngle,
+                                useCenter = true,
+                                style = Stroke(width = 8.dp.toPx())  // Width of the black border
+                            )
+                            break
+                        }
+                        angleAccumulator += sweep
+                    }
+                }
+            }
         }
-    }
 
-    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-        sortedData.sortedBy { it.first.uppercase(Locale.ROOT) }.forEach { (score, proportion) ->
-            val percent = "%.1f".format(proportion * 100)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    Modifier
-                        .size(12.dp)
-                        .background(colors[score] ?: Color.Gray)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("${score.uppercase(Locale.ROOT)} : $percent%", style = MaterialTheme.typography.bodyMedium)
+        if (selectedScore != null) {
+            val color = colors[selectedScore] ?: Color.Gray
+            val count = data[selectedScore] ?: 0f
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.1f))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Écoscore : ${selectedScore!!.uppercase()}", style = MaterialTheme.typography.titleMedium)
+                    Text("Nombre de produits : ${count.toInt()}", style = MaterialTheme.typography.bodyMedium)
+                }
             }
         }
     }
