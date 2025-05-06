@@ -40,7 +40,9 @@ class ProductViewModel : ViewModel() {
                     barcode = productResponse.product.code,
                     name = productResponse.product.product_name ?: "Nom non disponible",
                     imageUrl = imageUrl,
-                    timestamp = System.currentTimeMillis()
+                    timestamp = System.currentTimeMillis(),
+                        CO2_TOTAL = productResponse.product.ecoscore_data?.agribalyse?.co2_total,
+                        GreenScore = productResponse.product.ecoscore_data?.grade
                 )
 
                 // Enregistrer le produit avec l'image dans la base de données (utiliser ton repository ici)

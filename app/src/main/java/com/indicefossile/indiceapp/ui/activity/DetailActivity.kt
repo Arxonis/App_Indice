@@ -29,6 +29,7 @@ class DetailActivity : ComponentActivity() {
                     val resultIntent = Intent().apply {
                         putExtra("product_name", product!!.product_name)
                         putExtra("barcode", barcode)
+                        putExtra("CO2_TOTAL", product?.ecoscore_data?.agribalyse?.co2_total)
                     }
                     setResult(RESULT_OK, resultIntent)
                 }

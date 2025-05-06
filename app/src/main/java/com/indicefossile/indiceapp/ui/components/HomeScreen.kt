@@ -1,8 +1,13 @@
 package com.indicefossile.indiceapp.ui.components
 
+import android.annotation.SuppressLint
 import android.os.Build
 import androidx.annotation.OptIn
 import androidx.annotation.RequiresApi
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
@@ -43,18 +48,24 @@ fun HomeScreen(
     onProductClick: (String) -> Unit,
 ) {
     val scannedProducts by viewModel.allProducts.collectAsState(initial = emptyList())
+    val groupedProducts = groupProductsByDate(scannedProducts)
+    val todayCO2 = getTodayCO2Total(scannedProducts)
+
+    val today = Calendar.getInstance()
+    val productsToday = scannedProducts.filter { product ->
+        val productDate = Calendar.getInstance().apply { time = Date(product.timestamp) }
+        productDate.get(Calendar.YEAR) == today.get(Calendar.YEAR) &&
+                productDate.get(Calendar.DAY_OF_YEAR) == today.get(Calendar.DAY_OF_YEAR)
+    }
+
     var showHistory by remember { mutableStateOf(true) }
     var selectedPeriod by remember { mutableStateOf("Semaine") }
 
-    val fakeData = listOf(
-        Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -6) }.time to 4.2f,
-        Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -5) }.time to 3.8f,
-        Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -4) }.time to 5.0f,
-        Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -3) }.time to 4.1f,
-        Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -2) }.time to 4.7f,
-        Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }.time to 3.5f,
-        Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 0) }.time to 4.0f
-    )
+    val co2Data = scannedProducts
+        .filter { it.CO2_TOTAL != null }
+        .map {
+            Date(it.timestamp) to it.CO2_TOTAL!!.toFloat()
+        }
 
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
@@ -77,10 +88,23 @@ fun HomeScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
+                    text = "CO₂ aujourd'hui : %.2f kg CO2e".format(todayCO2),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color.Black,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                        .background(Color(0xFF009900), RoundedCornerShape(8.dp))
+                        .padding(16.dp)
+                )
+
+                Text(
                     text = if (showHistory) "→ Voir les statistiques" else "← Voir l’historique",
                     color = MaterialTheme.colorScheme.primary,
                     style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.fillMaxWidth().wrapContentWidth(Alignment.CenterHorizontally)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .wrapContentWidth(Alignment.CenterHorizontally)
                         .clickable { showHistory = !showHistory }
                         .padding(vertical = 8.dp)
                 )
@@ -104,8 +128,18 @@ fun HomeScreen(
                         }
                     }
                 } else {
-                    items(scannedProducts) { product ->
-                        ScannedProductItem(product, onProductClick)
+                    groupedProducts.forEach { (dateTitle, productsOnDate) ->
+                        item {
+                            Text(
+                                text = dateTitle,
+                                style = MaterialTheme.typography.titleLarge,
+                                modifier = Modifier
+                                    .padding(top = 16.dp, bottom = 8.dp)
+                            )
+                        }
+                        items(productsOnDate) { product ->
+                            ScannedProductItem(product, onProductClick)
+                        }
                     }
                 }
             } else {
@@ -151,7 +185,7 @@ fun HomeScreen(
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
 
-                    SimpleLineChart(fakeData, selectedPeriod)
+                    SimpleLineChart(co2Data, selectedPeriod)
 
                     Spacer(modifier = Modifier.height(16.dp))
 
@@ -174,59 +208,79 @@ fun HomeScreen(
             }
         }
 
-
-            Row(
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            Button(
+                onClick = onScanClick,
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF006600)),
+                border = BorderStroke(2.dp, Color.Black),
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                    .defaultMinSize(minHeight = 0.dp, minWidth = 0.dp)
             ) {
-                Button(
-                    onClick = onScanClick,
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF006600)),
-                    border = BorderStroke(2.dp, Color.Black),
-                    modifier = Modifier
-                        .defaultMinSize(minHeight = 0.dp, minWidth = 0.dp)
-                ) {
-                    Text(
-                        text = "Scanner",
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
-                }
+                Text(
+                    text = "Scanner",
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
 
-                Button(
-                    onClick = onWebsiteClick,
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF006600)),
-                    border = BorderStroke(2.dp, Color.Black),
-                    modifier = Modifier
-                        .defaultMinSize(minHeight = 0.dp, minWidth = 0.dp)
-                ) {
-                    Text(
-                        text = "Catalogue",
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
-                }
+            Button(
+                onClick = onWebsiteClick,
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF006600)),
+                border = BorderStroke(2.dp, Color.Black),
+                modifier = Modifier
+                    .defaultMinSize(minHeight = 0.dp, minWidth = 0.dp)
+            ) {
+                Text(
+                    text = "Catalogue",
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
             }
         }
-
+    }
 }
 
 
+fun groupProductsByDate(products: List<ScannedProduct>): Map<String, List<ScannedProduct>> {
+    val today = Calendar.getInstance()
+    val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
 
+    fun formatDate(date: Date): String {
+        val cal = Calendar.getInstance().apply { time = date }
+        return when {
+            cal.get(Calendar.YEAR) == today.get(Calendar.YEAR) &&
+                    cal.get(Calendar.DAY_OF_YEAR) == today.get(Calendar.DAY_OF_YEAR) -> "AUJOURD'HUI"
 
+            cal.get(Calendar.YEAR) == yesterday.get(Calendar.YEAR) &&
+                    cal.get(Calendar.DAY_OF_YEAR) == yesterday.get(Calendar.DAY_OF_YEAR) -> "HIER"
+
+            else -> SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(date)
+        }
+    }
+
+    return products
+        .sortedByDescending { it.timestamp }
+        .groupBy { formatDate(Date(it.timestamp)) }
+}
+
+@SuppressLint("DefaultLocale")
 @Composable
 fun ScannedProductItem(product: ScannedProduct, onProductClick: (String) -> Unit) {
-    val formattedDate = SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault()).format(Date(product.timestamp))
-
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
-            .clickable { onProductClick(product.barcode) },
-        tonalElevation = 2.dp
+            .clickable { onProductClick(product.barcode) }
+            .border(1.dp, getEcoScoreColor(product.GreenScore), shape = RoundedCornerShape(8.dp)),
+            color = Color.White,
+        tonalElevation = 2.dp,
+        shape = RoundedCornerShape(8.dp)
     ) {
         Row(
             modifier = Modifier
@@ -250,22 +304,43 @@ fun ScannedProductItem(product: ScannedProduct, onProductClick: (String) -> Unit
                 modifier = Modifier.weight(1f)
             ) {
                 Text(
-                    text = "${product.name}",
+                    text = product.name,
                     style = MaterialTheme.typography.titleMedium,
-                    color = Color(0xff238a03)
+                    color = Color.Black
                 )
                 Text(
-                    text = "Code-barres: ${product.barcode}",
-                    style = MaterialTheme.typography.bodyMedium
+                    text = buildAnnotatedString {
+                        val co2 = product.CO2_TOTAL
+                        if (co2 != null) {
+                            withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
+                                append(String.format("%.2f", co2))
+                            }
+                            append(" kg Co2e")
+                        } else {
+                            append("— kg Co2e")
+                        }
+                    },
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = getEcoScoreColor(product.GreenScore)
                 )
-                Text(
-                    text = "Scanné le : $formattedDate",
-                    style = MaterialTheme.typography.bodySmall
-                )
+
             }
         }
     }
 }
+
+fun getEcoScoreColor(ecoScore: String?): Color {
+    return when (ecoScore?.lowercase()) {
+        "a-plus" -> Color(0xFF166E25)
+        "a" -> Color(0xFF80BD41)
+        "b" -> Color(0xFFEBF13F)
+        "c" -> Color(0xFFEECC3E)
+        "d" -> Color(0xFFB74D4D)
+        "e" -> Color(0xFFA12323)
+        else -> Color(0xFFA12323) // couleur par défaut pour score inconnu
+    }
+}
+
 
 
 
@@ -274,39 +349,44 @@ fun SimpleLineChart(
     rawData: List<Pair<Date, Float?>>,
     period: String
 ) {
-    // Fonction pour grouper les données par période
     fun groupDataByPeriod(data: List<Pair<Date, Float?>>): List<Pair<Any, Float?>> {
 
         return try {
             when (period) {
                 "Jour" -> {
                     data.groupBy { SimpleDateFormat("dd", Locale.getDefault()).format(it.first) }
-                        .map { Pair(it.key, it.value.mapNotNull { it.second }.average().toFloat()) }
+                        .map { Pair(it.key, it.value.mapNotNull { it.second }.sum()) }
                 }
                 "Semaine" -> {
                     data.groupBy { SimpleDateFormat("yyyy-ww", Locale.getDefault()).format(it.first) }
-                        .map { Pair(it.key, it.value.mapNotNull { it.second }.average().toFloat()) }
+                        .map { Pair(it.key, it.value.mapNotNull { it.second }.sum()) }
                 }
                 "Mois" -> {
                     data.groupBy { SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(it.first) }
-                        .map { Pair(it.key, it.value.mapNotNull { it.second }.average().toFloat()) }
+                        .map { Pair(it.key, it.value.mapNotNull { it.second }.sum()) }
                 }
                 "Année" -> {
                     data.groupBy { SimpleDateFormat("yyyy", Locale.getDefault()).format(it.first) }
-                        .map { Pair(it.key, it.value.mapNotNull { it.second }.average().toFloat()) }
+                        .map { Pair(it.key, it.value.mapNotNull { it.second }.sum()) }
                 }
                 else -> data
             }
         } catch (e: Exception) {
-            emptyList() // Retourne une liste vide si une erreur survient
+            emptyList()
         }
     }
 
-    // Assurer que nous avons des données valides
     val groupedData = groupDataByPeriod(rawData)
 
+    groupedData.forEach { (key, value) ->
+        Log.d("SimpleLineChart", "Période: $key, Valeur moyenne: $value")
+    }
 
-    // Vérifier si les données regroupées sont vides ou non
+    rawData.forEach { (date, value) ->
+        Log.d("SimpleLineChart", "Date brute: ${date}, CO2: $value")
+    }
+
+
     if (groupedData.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("Aucune donnée à afficher", style = MaterialTheme.typography.bodyLarge)
@@ -314,7 +394,6 @@ fun SimpleLineChart(
         return
     }
 
-    // Dessiner le graphique
     androidx.compose.foundation.Canvas(modifier = Modifier
         .fillMaxWidth()
         .height(250.dp)
@@ -335,7 +414,6 @@ fun SimpleLineChart(
             strokeWidth = 2f
         )
 
-        // Affichage des valeurs en ordonnée (Y) pour le CO2 (Kg)
         val maxValue = groupedData.maxOfOrNull { it.second ?: 0f } ?: 0f
         val step = maxValue / 5
 
@@ -348,7 +426,7 @@ fun SimpleLineChart(
                     textAlign = android.graphics.Paint.Align.RIGHT
                 }
                 drawText(
-                    "${(step * i).toInt()} kg CO₂", // Affiche le label avec "kg CO₂"
+                    "${(step * i).toInt()} kg CO₂",
                     20f, // Position X
                     yPosition, // Position Y
                     paint
@@ -356,10 +434,9 @@ fun SimpleLineChart(
             }
         }
 
-        // Dessiner les points
         groupedData.forEachIndexed { index, (periodKey, value) ->
-            val x = index * (size.width / groupedData.size) + 40f // Espacement des points
-            val y = size.height - 20f - (value?.times((size.height - 40f) / maxValue) ?: 0f) // Hauteur du point
+            val x = index * (size.width / groupedData.size) + 40f
+            val y = size.height - 20f - (value?.times((size.height - 40f) / maxValue) ?: 0f)
             drawCircle(
                 color = Color.Blue,
                 radius = 6f,
@@ -408,3 +485,28 @@ fun SimpleLineChart(
         }
     }
 }
+
+fun getTodayCO2Total(products: List<ScannedProduct>): Double {
+    val today = Calendar.getInstance()
+    val todayStart = Calendar.getInstance().apply {
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }
+    val todayEnd = Calendar.getInstance().apply {
+        set(Calendar.HOUR_OF_DAY, 23)
+        set(Calendar.MINUTE, 59)
+        set(Calendar.SECOND, 59)
+        set(Calendar.MILLISECOND, 999)
+    }
+
+    val todayProducts = products.filter {
+        val productDate = Calendar.getInstance().apply { time = Date(it.timestamp) }
+        productDate.after(todayStart) && productDate.before(todayEnd)
+    }
+
+    return todayProducts.sumOf { it.CO2_TOTAL ?: 0.0 }
+}
+
+

@@ -26,6 +26,7 @@ import coil.compose.rememberAsyncImagePainter
 import com.indicefossile.indiceapp.R
 import com.indicefossile.indiceapp.data.model.Product
 import com.indicefossile.indiceapp.ui.utils.getProductImageUrl
+import java.math.BigDecimal
 import java.math.RoundingMode
 
 // Fonctions d'aide pour mapper les scores aux images disponibles dans vos ressources.
@@ -204,13 +205,22 @@ fun ProductDetailScreen(product: Product, modifier: Modifier = Modifier) {
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "Détails CO₂ (en kg)",
+                        text = "Détails en kg de CO₂e",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.error
                     )
                     product.ecoscore_data?.agribalyse?.let { agr ->
-                        DetailItem(label = "Total", value = agr.co2_total?.toBigDecimal()?.setScale(3, RoundingMode.HALF_UP)?.toDouble().toString() ?: "?")
+                        DetailItem(label = "Total",
+                            value = agr.co2_total?.toBigDecimal()?.let { co2Total ->
+                                product.quantity?.let {
+                                    extractNumericValue(it)?.let { weight ->
+                                        (co2Total.divide(BigDecimal(1000)) * BigDecimal(weight))
+                                            .setScale(3, RoundingMode.CEILING)
+                                            .toString()
+                                    }
+                                } ?: "Non disponible"
+                            } ?: "Non disponible")
                     } ?: Text(
                         text = "Données Agribalyse non disponibles",
                         style = MaterialTheme.typography.bodyLarge,
@@ -218,12 +228,73 @@ fun ProductDetailScreen(product: Product, modifier: Modifier = Modifier) {
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     product.ecoscore_data?.agribalyse?.let { agr ->
-                        DetailItem(label = "Agriculture", value = agr.co2_agriculture?.toBigDecimal()?.setScale(3, RoundingMode.HALF_UP)?.toDouble().toString() ?: "Non disponible")
-                        DetailItem(label = "Consumption", value = agr.co2_consumption?.toBigDecimal()?.setScale(3, RoundingMode.HALF_UP)?.toDouble().toString() ?: "Non disponible")
-                        DetailItem(label = "Distribution", value = agr.co2_distribution?.toBigDecimal()?.setScale(3, RoundingMode.HALF_UP)?.toDouble().toString() ?: "Non disponible")
-                        DetailItem(label = "Packaging", value = agr.co2_packaging?.toBigDecimal()?.setScale(3, RoundingMode.HALF_UP)?.toDouble().toString() ?: "Non disponible")
-                        DetailItem(label = "Processing", value = agr.co2_processing?.toBigDecimal()?.setScale(3, RoundingMode.HALF_UP)?.toDouble().toString() ?: "Non disponible")
-                        DetailItem(label = "Transportation", value = agr.co2_transportation?.toBigDecimal()?.setScale(3, RoundingMode.HALF_UP)?.toDouble().toString() ?: "Non disponible")
+                        DetailItem(label = "Agriculture",
+                            value = agr.co2_agriculture?.toBigDecimal()?.let { co2Agriculture ->
+                                product.quantity?.let {
+                                    extractNumericValue(it)?.let { weight ->
+                                        (co2Agriculture.divide(BigDecimal(1000)) * BigDecimal(weight))
+                                            .setScale(3, RoundingMode.CEILING)
+                                            .toString()
+                                    }
+                                } ?: "Non disponible"
+                            } ?: "Non disponible")
+
+                        DetailItem(label = "Consumption",
+                            value = agr.co2_consumption?.toBigDecimal()?.let { co2Consumption ->
+                                product.quantity?.let {
+                                    extractNumericValue(it)?.let { weight ->
+                                        (co2Consumption.divide(BigDecimal(1000)) * BigDecimal(weight))
+                                            .setScale(3, RoundingMode.CEILING)
+                                            .toString()
+                                    }
+                                } ?: "Non disponible"
+                            } ?: "Non disponible")
+
+                        DetailItem(label = "Distribution",
+                            value = agr.co2_distribution?.toBigDecimal()?.let { co2Distribution ->
+                                product.quantity?.let {
+                                    extractNumericValue(it)?.let { weight ->
+                                        (co2Distribution.divide(BigDecimal(1000)) * BigDecimal(weight))
+                                            .setScale(3, RoundingMode.CEILING)
+                                            .toString()
+                                    }
+                                } ?: "Non disponible"
+                            } ?: "Non disponible")
+
+                        DetailItem(label = "Packaging",
+                            value = agr.co2_packaging?.toBigDecimal()?.let { co2Packaging ->
+                                product.quantity?.let {
+                                    extractNumericValue(it)?.let { weight ->
+                                        (co2Packaging.divide(BigDecimal(1000)) * BigDecimal(weight))
+                                            .setScale(3, RoundingMode.CEILING)
+                                            .toString()
+                                    }
+                                } ?: "Non disponible"
+                            } ?: "Non disponible")
+
+                        DetailItem(label = "Processing",
+                            value = agr.co2_processing?.toBigDecimal()?.let { co2Processing ->
+                                product.quantity?.let {
+                                    extractNumericValue(it)?.let { weight ->
+                                        (co2Processing.divide(BigDecimal(1000)) * BigDecimal(weight))
+                                            .setScale(3, RoundingMode.CEILING)
+                                            .toString()
+                                    }
+                                } ?: "Non disponible"
+                            } ?: "Non disponible")
+
+                        DetailItem(label = "Transportation",
+                            value = agr.co2_transportation?.toBigDecimal()?.let { co2Transportation ->
+                                product.quantity?.let {
+                                    extractNumericValue(it)?.let { weight ->
+                                        (co2Transportation.divide(BigDecimal(1000)) * BigDecimal(weight))
+                                            .setScale(3, RoundingMode.CEILING)
+                                            .toString()
+                                    }
+                                } ?: "Non disponible"
+                            } ?: "Non disponible")
+
+
                     } ?: Text(
                         text = "Données Agribalyse non disponibles",
                         style = MaterialTheme.typography.bodyMedium,
@@ -357,6 +428,14 @@ fun ProductDetailScreen(product: Product, modifier: Modifier = Modifier) {
             }
         }
     }
+}
+
+fun extractNumericValue(value: String): Double? {
+    val isKg = value.contains("kg", ignoreCase = true)
+    val numericValue = value.replace("[^0-9.,]".toRegex(), "")
+        .replace(",", ".")
+    val result = numericValue.toDoubleOrNull()
+    return if (result != null && isKg) result * 1000 else result
 }
 
 @Composable

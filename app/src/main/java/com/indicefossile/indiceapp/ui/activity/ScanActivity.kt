@@ -2,7 +2,6 @@ package com.indicefossile.indiceapp.ui.activity
 
 import android.app.AlertDialog
 import android.os.Bundle
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -73,6 +72,15 @@ class ScanActivity : AppCompatActivity() {
             .show()
     }
 
+    fun extractNumericValue(value: String): Double? {
+        val isKg = value.contains("kg", ignoreCase = true)
+        val numericValue = value.replace("[^0-9.,]".toRegex(), "")
+            .replace(",", ".")
+        val result = numericValue.toDoubleOrNull()
+        return if (result != null && isKg) result * 1000 else result
+    }
+
+
     @Composable
     fun ScanScreen(isMultipleScan: Boolean) {
         val context = LocalContext.current
@@ -101,12 +109,12 @@ class ScanActivity : AppCompatActivity() {
             val scannedProduct = ScannedProduct(
                 barcode = scannedBarcode ?: "",
                 name = product!!.product_name ?: "Nom non disponible",
-                imageUrl = imageUrl
+                imageUrl = imageUrl,
+                CO2_TOTAL = (product?.ecoscore_data?.agribalyse?.co2_total?.div(1000))?.times(extractNumericValue(product?.quantity ?: "") ?: 1.0),
+                GreenScore = product?.ecoscore_data?.grade
             )
 
-            // Si c'est un scan multiple
             if (isMultipleScan) {
-                // Ajouter le produit seulement s'il n'est pas déjà dans le Set
                 if (!scannedProducts.contains(scannedProduct)) {
                     scannedProducts.add(scannedProduct)
                     Toast.makeText(context, "${product!!.product_name} ajouté", Toast.LENGTH_SHORT).show()
@@ -118,7 +126,9 @@ class ScanActivity : AppCompatActivity() {
                 viewModel.insertProduct(
                     barcode = scannedProduct.barcode,
                     name = scannedProduct.name,
-                    imageUrl = scannedProduct.imageUrl
+                    imageUrl = scannedProduct.imageUrl,
+                    CO2_TOTAL = scannedProduct.CO2_TOTAL,
+                    scannedProduct.GreenScore
                 )
                 Toast.makeText(context, "Produit enregistré: ${product!!.product_name}", Toast.LENGTH_SHORT).show()
                 finish() // Termine l'activité après le scan unique
@@ -130,7 +140,7 @@ class ScanActivity : AppCompatActivity() {
     // Enregistre les produits scannés en mode multiple
     private fun saveAllScannedProducts() {
         for (product in scannedProducts) {
-            viewModel.insertProduct(product.barcode, product.name, product.imageUrl) // Insertion avec imageUrl
+            viewModel.insertProduct(product.barcode, product.name, product.imageUrl, product.CO2_TOTAL, product.GreenScore)
         }
         Toast.makeText(this, "${scannedProducts.size} produit(s) enregistré(s)", Toast.LENGTH_SHORT).show()
         finish()

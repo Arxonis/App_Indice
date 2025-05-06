@@ -21,8 +21,8 @@ data class Product(
 
 data class NutriscoreData(
     val grade: String?,
-    val score: Int?,
-    val energy_points: Int?,
+    val score: Double?,
+    val energy_points: Double?,
     val sugars_value: Double?
 )
 
@@ -31,9 +31,9 @@ data class EcoscoreData(
     // Autres champs éventuels de l'ecoscore_data
     val adjustments: Adjustments?,
     val missing: Missing?,
-    val missing_data_warning: Int?,
-    val score: Int?,
-    val scores: Map<String, Int>?,
+    val missing_data_warning: Double?,
+    val score: Double?,
+    val scores: Map<String, Double>?,
     val status: String?,
     // Ajoutez ici la propriété previous_data pour récupérer l'agribalyse imbriquée
     val agribalyse: Agribalyse ?
@@ -58,10 +58,10 @@ data class Agribalyse(
     val ef_processing: Double?,
     val ef_total: Double?,
     val ef_transportation: Double?,
-    val is_beverage: Int?,
+    val is_beverage: Double?,
     val name_en: String?,
     val name_fr: String?,
-    val score: Int?,
+    val score: Double?,
     val version: String?
 )
 
@@ -88,15 +88,15 @@ data class OriginsOfIngredients(
 data class AggregatedOrigin(
     val epi_score: String?,
     val origin: String?,
-    val percent: Int?,
-    val transportation_score: Int?
+    val percent: Double?,
+    val transportation_score: Double?
 )
 
 data class Missing(
     // Exemple de structure si besoin
-    val labels: Int?,
-    val origins: Int?,
-    val packagings: Int?
+    val labels: Double?,
+    val origins: Double?,
+    val packagings: Double?
 )
 
 data class Images(
@@ -110,6 +110,6 @@ data class ImageData(
 )
 
 data class SizeData(
-    val w: Int,
-    val h: Int
+    val w: Double,
+    val h: Double
 )

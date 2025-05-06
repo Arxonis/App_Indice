@@ -8,12 +8,16 @@ import androidx.activity.compose.setContent
 import com.indicefossile.indiceapp.ui.components.HomeScreen
 import com.indicefossile.indiceapp.ui.theme.IndiceAppTheme
 import android.content.pm.ActivityInfo
+import android.os.Build
+import androidx.annotation.RequiresApi
 import com.indicefossile.indiceapp.data.database.AppDatabase
 import com.indicefossile.indiceapp.data.repository.ScannedProductRepository
 import com.indicefossile.indiceapp.ui.viewmodel.ScannedProductViewModel
+import androidx.core.net.toUri
 
 
 class MainActivity : ComponentActivity() {
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
@@ -31,7 +35,8 @@ class MainActivity : ComponentActivity() {
                     },
                     onWebsiteClick = {
                         // Ouvrir le site du catalogue
-                        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://indicefossile.fr/catalogue"))
+                        val browserIntent = Intent(Intent.ACTION_VIEW,
+                            "https://indicefossile.fr/catalogue".toUri())
                         startActivity(browserIntent)
                     },
                     onProductClick = { barcode ->

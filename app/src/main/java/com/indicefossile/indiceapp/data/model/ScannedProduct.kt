@@ -9,5 +9,7 @@ data class ScannedProduct(
     val barcode: String,  // Code-barres du produit
     val name: String,  // Nom du produit
     val timestamp: Long = System.currentTimeMillis(),
-    val imageUrl: String? = null
+    val imageUrl: String? = null,
+    val CO2_TOTAL: Double?,
+    val GreenScore: String?
 )
