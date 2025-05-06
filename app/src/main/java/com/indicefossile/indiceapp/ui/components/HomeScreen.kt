@@ -21,6 +21,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.border
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import kotlin.math.cos
+import kotlin.math.sin
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -544,24 +547,35 @@ fun getTodayCO2Total(products: List<ScannedProduct>): Float {
     return todayProducts.sumOf { (it.CO2_TOTAL ?: 0.0).toFloat() }
 }
 
-fun calculateCO2ByGreenScore(products: List<ScannedProduct>): Map<String, Float> {
+fun calculateCO2ByGreenScore(products: List<ScannedProduct>): Map<String, Pair<Float, Int>> {
     return products
         .filter { it.CO2_TOTAL != null && it.GreenScore != null }
         .groupBy { it.GreenScore!!.lowercase() }
         .mapValues { (_, list) ->
-            list.sumOf { it.CO2_TOTAL!!.toFloat() }
+            // Calcule la somme du CO2 total pour chaque GreenScore
+            val totalCO2 = list.sumOf { it.CO2_TOTAL!!.toFloat() }
+            // Calcule le nombre de produits pour chaque GreenScore
+            val productCount = list.size
+            Pair(totalCO2, productCount)
         }
 }
 
 
 @Composable
 fun InteractivePieChart(
-    data: Map<String, Float>,
+    data: Map<String, Pair<Float, Int>>, // Changez ici pour recevoir un Pair de Float et Int
     modifier: Modifier = Modifier
 ) {
-    val total = data.values.sum().takeIf { it > 0 } ?: return
-    val proportions = data.mapValues { it.value / total }
-    val sortedData = proportions.toList().sortedByDescending { it.second }
+    val total = data.values.sumOf { it.first }.takeIf { it > 0 } ?: return // Total CO2
+    val proportions = data.mapValues { it.value.first / total }
+
+    val sortedData = proportions.toList().sortedWith { a, b ->
+        when {
+            a.first == "a-plus" -> -1
+            b.first == "a-plus" -> 1
+            else -> a.first.compareTo(b.first)
+        }
+    }
 
     val colors = mapOf(
         "a-plus" to Color(0xFF166E25),
@@ -593,18 +607,15 @@ fun InteractivePieChart(
                         val width = size.width
                         val height = size.height
 
-                        // Calcul du rayon minimal entre la largeur et la hauteur
                         val radius = if (width < height) width / 2f else height / 2f
-
                         val center = Offset(width / 2f, height / 2f)
                         val touchVector = offset - center
                         val touchDistance = touchVector.getDistance()
 
                         if (touchDistance > radius) return@detectTapGestures
 
-                        // Calcul de l'angle de touche en degrés entre -180 et 180
                         var touchAngle = Math.toDegrees(atan2(touchVector.y.toDouble(), touchVector.x.toDouble())).toFloat()
-                        touchAngle = (touchAngle + 360f + 90f) % 360f // Normaliser entre [0, 360)
+                        touchAngle = (touchAngle + 360f + 90f) % 360f
 
                         var angleAccumulator = 0f
                         for ((score, proportion) in sortedData) {
@@ -623,10 +634,9 @@ fun InteractivePieChart(
 
                 var startAngle = -90f
 
-                // Dessiner les arcs
                 sortedData.forEach { (score, proportion) ->
                     val sweepAngle = 360 * proportion
-                    val color = colors[score] ?: Color.Gray
+                    var color = colors[score] ?: Color.Gray
 
                     drawArc(
                         color = color,
@@ -635,15 +645,33 @@ fun InteractivePieChart(
                         useCenter = true
                     )
 
+                    val middleAngle = startAngle + sweepAngle / 2
+                    val radius = width / 2f * 0.6f
+                    val letterX = width / 2f + radius * cos(Math.toRadians(middleAngle.toDouble())).toFloat()
+                    val letterY = height / 2f + radius * sin(Math.toRadians(middleAngle.toDouble())).toFloat()
+
+                    drawIntoCanvas { canvas ->
+                        val paint = android.graphics.Paint().apply {
+                            color = Color.Black
+                            textSize = 40f
+                            textAlign = android.graphics.Paint.Align.CENTER
+                        }
+                        val displayText = if (score == "a-plus") "A+" else score.first().uppercase()
+                        canvas.nativeCanvas.drawText(
+                            displayText,
+                            letterX,
+                            letterY,
+                            paint
+                        )
+                    }
+
                     startAngle += sweepAngle
                 }
 
-                // Dessiner la bordure noire pour la section sélectionnée
                 selectedScore?.let { score ->
                     val sweepAngle = 360 * (proportions[score] ?: 0f)
                     val color = colors[score] ?: Color.Gray
 
-                    // Dessiner la bordure noire
                     var angleAccumulator = 0f
                     for ((score, proportion) in sortedData) {
                         val sweep = 360 * proportion
@@ -654,7 +682,7 @@ fun InteractivePieChart(
                                 startAngle = arcStartAngle,
                                 sweepAngle = sweepAngle,
                                 useCenter = true,
-                                style = Stroke(width = 8.dp.toPx())  // Width of the black border
+                                style = Stroke(width = 8.dp.toPx())
                             )
                             break
                         }
@@ -666,14 +694,16 @@ fun InteractivePieChart(
 
         if (selectedScore != null) {
             val color = colors[selectedScore] ?: Color.Gray
-            val count = data[selectedScore] ?: 0f
+            val (totalCO2, productCount) = data[selectedScore] ?: Pair(0f, 0)
+
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.1f))
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text("Écoscore : ${selectedScore!!.uppercase()}", style = MaterialTheme.typography.titleMedium)
-                    Text("Nombre de produits : ${count.toInt()}", style = MaterialTheme.typography.bodyMedium)
+                    Text("Nombre de produits : $productCount", style = MaterialTheme.typography.bodyMedium)
+                    Text("CO2 total : ${totalCO2.toInt()} g", style = MaterialTheme.typography.bodyMedium)
                 }
             }
         }
