@@ -11,6 +11,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -28,6 +29,7 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.toUpperCase
 import androidx.compose.ui.unit.dp
 import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
@@ -36,6 +38,7 @@ import com.google.android.material.color.MaterialColors
 import com.indicefossile.indiceapp.R
 import com.indicefossile.indiceapp.data.model.ScannedProduct
 import com.indicefossile.indiceapp.ui.viewmodel.ScannedProductViewModel
+import com.patrykandpatrick.vico.core.extension.sumOf
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -60,6 +63,8 @@ fun HomeScreen(
 
     var showHistory by remember { mutableStateOf(true) }
     var selectedPeriod by remember { mutableStateOf("Semaine") }
+    var showPieChart by remember { mutableStateOf(false) }
+    val co2ByGreenScore = calculateCO2ByGreenScore(scannedProducts)
 
     val co2Data = scannedProducts
         .filter { it.CO2_TOTAL != null }
@@ -150,60 +155,70 @@ fun HomeScreen(
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    Button(
+                        onClick = { showPieChart = !showPieChart },
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
                     ) {
-                        listOf("Jour", "Semaine", "Mois", "Année").forEach { period ->
-                            Button(
-                                onClick = { selectedPeriod = period },
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (selectedPeriod == period)
-                                        MaterialTheme.colorScheme.primary
-                                    else
-                                        MaterialTheme.colorScheme.secondary
-                                )
-                            ) {
-                                Text(
-                                    text = period,
-                                    color = MaterialTheme.colorScheme.onPrimary,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                        }
+                        Text(if (showPieChart) "Voir le graphique linéaire" else "Voir la répartition CO₂ par note")
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    if (showPieChart) {
+                        PieChart(co2ByGreenScore)
+                    } else {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            listOf("Jour", "Semaine", "Mois", "Année").forEach { period ->
+                                Button(
+                                    onClick = { selectedPeriod = period },
+                                    modifier = Modifier.weight(1f),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = if (selectedPeriod == period)
+                                            MaterialTheme.colorScheme.primary
+                                        else
+                                            MaterialTheme.colorScheme.secondary
+                                    )
+                                ) {
+                                    Text(
+                                        text = period,
+                                        color = MaterialTheme.colorScheme.onPrimary,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
 
-                    Text(
-                        text = "Période sélectionnée: $selectedPeriod",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
+                        Spacer(modifier = Modifier.height(8.dp))
 
-                    SimpleLineChart(co2Data, selectedPeriod)
+                        Text(
+                            text = "Période sélectionnée: $selectedPeriod",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(16.dp))
+                        SimpleLineChart(co2Data, selectedPeriod)
 
-                    Text(
-                        "CO₂ : —",
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.padding(vertical = 4.dp)
-                    )
-                    Text(
-                        "Énergie : —",
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.padding(vertical = 4.dp)
-                    )
-                    Text(
-                        "Note globale : —",
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.padding(vertical = 4.dp)
-                    )
+                        Text(
+                            "CO₂ : —",
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
+                        Text(
+                            "Énergie : —",
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
+                        Text(
+                            "Note globale : —",
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
+                    }
                 }
             }
         }
@@ -380,7 +395,7 @@ fun SimpleLineChart(
 
 
     if (groupedData.isEmpty()) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Box(modifier = Modifier.fillMaxSize().padding(vertical = 32.dp), contentAlignment = Alignment.Center) {
             Text("Aucune donnée à afficher", style = MaterialTheme.typography.bodyLarge)
         }
         return
@@ -478,7 +493,7 @@ fun SimpleLineChart(
     }
 }
 
-fun getTodayCO2Total(products: List<ScannedProduct>): Double {
+fun getTodayCO2Total(products: List<ScannedProduct>): Float {
     val today = Calendar.getInstance()
     val todayStart = Calendar.getInstance().apply {
         set(Calendar.HOUR_OF_DAY, 0)
@@ -498,7 +513,61 @@ fun getTodayCO2Total(products: List<ScannedProduct>): Double {
         productDate.after(todayStart) && productDate.before(todayEnd)
     }
 
-    return todayProducts.sumOf { it.CO2_TOTAL ?: 0.0 }
+    return todayProducts.sumOf { (it.CO2_TOTAL ?: 0.0).toFloat() }
 }
 
+fun calculateCO2ByGreenScore(products: List<ScannedProduct>): Map<String, Float> {
+    return products
+        .filter { it.CO2_TOTAL != null && it.GreenScore != null }
+        .groupBy { it.GreenScore!!.lowercase() }
+        .mapValues { (_, list) -> list.sumOf { it.CO2_TOTAL!!.toFloat() } }
+}
 
+@Composable
+fun PieChart(data: Map<String, Float>) {
+    val total = data.values.sum()
+    val proportions = data.mapValues { it.value / total }
+
+    val colors = mapOf(
+        "a-plus" to Color(0xFF166E25),
+        "a" to Color(0xFF80BD41),
+        "b" to Color(0xFFEBF13F),
+        "c" to Color(0xFFEECC3E),
+        "d" to Color(0xFFB74D4D),
+        "e" to Color(0xFFA12323)
+    )
+
+    val sortedData = proportions.toList().sortedByDescending { it.second }
+
+    Canvas(modifier = Modifier
+        .fillMaxWidth()
+        .height(300.dp)
+        .padding(16.dp)) {
+        var startAngle = -90f
+        sortedData.forEach { (score, proportion) ->
+            val sweepAngle = 360 * proportion
+            drawArc(
+                color = colors[score] ?: Color.Gray,
+                startAngle = startAngle,
+                sweepAngle = sweepAngle,
+                useCenter = true
+            )
+            startAngle += sweepAngle
+        }
+    }
+
+    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+        sortedData.sortedBy { it.first.uppercase(Locale.ROOT) }.forEach { (score, proportion) ->
+            val percent = "%.1f".format(proportion * 100)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier
+                        .size(12.dp)
+                        .background(colors[score] ?: Color.Gray)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("${score.uppercase(Locale.ROOT)} : $percent%", style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+    }
+}
