@@ -337,7 +337,7 @@ fun getEcoScoreColor(ecoScore: String?): Color {
         "c" -> Color(0xFFEECC3E)
         "d" -> Color(0xFFB74D4D)
         "e" -> Color(0xFFA12323)
-        else -> Color(0xFFA12323) // couleur par défaut pour score inconnu
+        else -> Color(0xFFA12323)
     }
 }
 
@@ -377,14 +377,6 @@ fun SimpleLineChart(
     }
 
     val groupedData = groupDataByPeriod(rawData)
-
-    groupedData.forEach { (key, value) ->
-        Log.d("SimpleLineChart", "Période: $key, Valeur moyenne: $value")
-    }
-
-    rawData.forEach { (date, value) ->
-        Log.d("SimpleLineChart", "Date brute: ${date}, CO2: $value")
-    }
 
 
     if (groupedData.isEmpty()) {

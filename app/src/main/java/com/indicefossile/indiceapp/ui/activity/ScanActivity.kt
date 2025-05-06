@@ -1,6 +1,7 @@
 package com.indicefossile.indiceapp.ui.activity
 
 import android.app.AlertDialog
+import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.viewModels
@@ -36,37 +37,33 @@ class ScanActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         if (savedInstanceState != null) {
-            // Si l'activité est recréée, on récupère le mode choisi et l'état du scan
             isMultipleScan = savedInstanceState.getBoolean("isMultipleScan", false)
             hasScannedOnce = savedInstanceState.getBoolean("hasScannedOnce", false)
             if (isMultipleScan) {
                 setContent { ScanScreen(isMultipleScan) }
-                if (!hasScannedOnce) startScan() // Lance le scan si non fait déjà
+                if (!hasScannedOnce) startScan()
             } else {
                 setContent { ScanScreen(isMultipleScan) }
             }
         } else {
-            // Si c'est la première fois, on demande à l'utilisateur de choisir le mode
             showScanModeDialog()
         }
     }
 
-    // Sauvegarde le choix et l'état du scan en cas de recréation de l'activité
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putBoolean("isMultipleScan", isMultipleScan)
         outState.putBoolean("hasScannedOnce", hasScannedOnce)
     }
 
-    // Affiche la boîte de dialogue pour choisir entre scan unique et multiple
     private fun showScanModeDialog() {
         val options = arrayOf("Scan Unique", "Scan Multiple")
         AlertDialog.Builder(this)
             .setTitle("Choisissez un mode de scan")
             .setItems(options) { _, which ->
-                isMultipleScan = (which == 1) // Met à jour `isMultipleScan` en fonction du choix
-                setContent { ScanScreen(isMultipleScan) } // Affiche l'écran de scan
-                startScan() // Démarre le scan
+                isMultipleScan = (which == 1)
+                setContent { ScanScreen(isMultipleScan) }
+                startScan()
             }
             .setCancelable(false)
             .show()
@@ -86,14 +83,12 @@ class ScanActivity : AppCompatActivity() {
         val context = LocalContext.current
         val product by productViewModel.product.collectAsState()
 
-        // Quand le barcode change, on récupère les informations du produit
         LaunchedEffect(scannedBarcode) {
             scannedBarcode?.let { barcode ->
                 productViewModel.fetchProduct(barcode)
             }
         }
 
-        // Si un produit est trouvé, on le traite
         if (product != null && scannedBarcode != null) {
             // Récupérer l'URL de l'image
             val imageUrl = product!!.images?.front_fr?.let { frontImage ->
@@ -105,7 +100,6 @@ class ScanActivity : AppCompatActivity() {
                 )
             }
 
-            // Créer un ScannedProduct avec l'image et autres informations
             val scannedProduct = ScannedProduct(
                 barcode = scannedBarcode ?: "",
                 name = product!!.product_name ?: "Nom non disponible",
@@ -122,7 +116,10 @@ class ScanActivity : AppCompatActivity() {
                 scannedBarcode = null
                 startScan() // Relance le scan
             } else {
-                // Si c'est un scan unique
+                val detailIntent = Intent(this, DetailActivity::class.java).apply {
+                    putExtra("barcode", scannedBarcode)
+                }
+                startActivity(detailIntent)
                 viewModel.insertProduct(
                     barcode = scannedProduct.barcode,
                     name = scannedProduct.name,
@@ -131,7 +128,7 @@ class ScanActivity : AppCompatActivity() {
                     scannedProduct.GreenScore
                 )
                 Toast.makeText(context, "Produit enregistré: ${product!!.product_name}", Toast.LENGTH_SHORT).show()
-                finish() // Termine l'activité après le scan unique
+                finish()
             }
         }
     }
