@@ -8,7 +8,7 @@ import com.indicefossile.indiceapp.data.model.ProductResponse
 object RetrofitInstance {
     private val retrofit by lazy {
         Retrofit.Builder()
-            .baseUrl("https://world.openfoodfacts.net/") // Vérifie si c’est la bonne URL de base
+            .baseUrl("https://world.openfoodfacts.net/")
             .addConverterFactory(GsonConverterFactory.create())
             .build()
     }
@@ -17,12 +17,9 @@ object RetrofitInstance {
         retrofit.create(OpenFoodFactsApi::class.java)
     }
 
-    // Wrapper pour logguer l'appel avec le barcode
     suspend fun getProductWithLogging(barcode: String): ProductResponse {
-        // Logguer l'URL + barcode avant d'appeler l'API
         Log.d("OpenFoodFacts", "Requête envoyée pour le barcode : $barcode")
 
-        // Appeler réellement l'API avec le barcode
         return api.getProduct(barcode)
     }
 }

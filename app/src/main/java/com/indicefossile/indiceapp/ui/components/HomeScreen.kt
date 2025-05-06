@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.toUpperCase
 import androidx.compose.ui.unit.dp
@@ -53,13 +54,6 @@ fun HomeScreen(
     val scannedProducts by viewModel.allProducts.collectAsState(initial = emptyList())
     val groupedProducts = groupProductsByDate(scannedProducts)
     val todayCO2 = getTodayCO2Total(scannedProducts)
-
-    val today = Calendar.getInstance()
-    val productsToday = scannedProducts.filter { product ->
-        val productDate = Calendar.getInstance().apply { time = Date(product.timestamp) }
-        productDate.get(Calendar.YEAR) == today.get(Calendar.YEAR) &&
-                productDate.get(Calendar.DAY_OF_YEAR) == today.get(Calendar.DAY_OF_YEAR)
-    }
 
     var showHistory by remember { mutableStateOf(true) }
     var selectedPeriod by remember { mutableStateOf("Semaine") }
@@ -121,14 +115,13 @@ fun HomeScreen(
                 if (scannedProducts.isEmpty()) {
                     item {
                         Box(
-                            modifier = Modifier
-                                .fillParentMaxHeight()
-                                .padding(vertical = 32.dp),
-                            contentAlignment = Alignment.Center
+                            modifier = Modifier.padding(0.dp, 150.dp)
                         ) {
                             Text(
-                                "Aucun produit scanné pour le moment.",
-                                style = MaterialTheme.typography.bodyLarge
+                                "HISTORIQUE\nVIDE",
+                                style = MaterialTheme.typography.bodyLarge,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(125.dp, 0.dp, 0.dp, 0.dp)
                             )
                         }
                     }
@@ -359,17 +352,17 @@ fun getEcoScoreColor(ecoScore: String?): Color {
 
 
 
-@OptIn(UnstableApi::class) @Composable
+@OptIn(UnstableApi::class)
+@Composable
 fun SimpleLineChart(
     rawData: List<Pair<Date, Float?>>,
     period: String
 ) {
     fun groupDataByPeriod(data: List<Pair<Date, Float?>>): List<Pair<Any, Float?>> {
-
         return try {
             when (period) {
                 "Jour" -> {
-                    data.groupBy { SimpleDateFormat("dd", Locale.getDefault()).format(it.first) }
+                    data.groupBy { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(it.first) }
                         .map { Pair(it.key, it.value.mapNotNull { it.second }.sum()) }
                 }
                 "Semaine" -> {
@@ -393,31 +386,35 @@ fun SimpleLineChart(
 
     val groupedData = groupDataByPeriod(rawData)
 
-
     if (groupedData.isEmpty()) {
-        Box(modifier = Modifier.fillMaxSize().padding(vertical = 32.dp), contentAlignment = Alignment.Center) {
+        Box(
+            modifier = Modifier.fillMaxSize().padding(vertical = 32.dp),
+            contentAlignment = Alignment.Center
+        ) {
             Text("Aucune donnée à afficher", style = MaterialTheme.typography.bodyLarge)
         }
         return
     }
 
-    androidx.compose.foundation.Canvas(modifier = Modifier
-        .fillMaxWidth()
-        .height(250.dp)
-        .padding(16.dp)) {
+    Canvas(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(250.dp)
+            .padding(horizontal = 8.dp, vertical = 16.dp)
+    ) {
+        val yAxisOffset = 70f
+        val bottomOffset = 20f
 
-        // Dessiner les axes et les valeurs en ordonnée
         drawLine(
             color = Color.Black,
-            start = Offset(30f, 0f),
-            end = Offset(30f, size.height),
+            start = Offset(yAxisOffset, 0f),
+            end = Offset(yAxisOffset, size.height),
             strokeWidth = 2f
         )
-
         drawLine(
             color = Color.Black,
-            start = Offset(30f, size.height - 20f),
-            end = Offset(size.width, size.height - 20f),
+            start = Offset(yAxisOffset, size.height - bottomOffset),
+            end = Offset(size.width, size.height - bottomOffset),
             strokeWidth = 2f
         )
 
@@ -425,37 +422,55 @@ fun SimpleLineChart(
         val step = maxValue / 5
 
         for (i in 0..5) {
-            val yPosition = size.height - 20f - (i * (size.height - 40f) / 5)
+            val yPosition = size.height - bottomOffset - (i * (size.height - 2 * bottomOffset) / 5)
             drawContext.canvas.nativeCanvas.apply {
                 val paint = android.graphics.Paint().apply {
                     color = android.graphics.Color.BLACK
-                    textSize = 16f
+                    textSize = 20f
                     textAlign = android.graphics.Paint.Align.RIGHT
                 }
+                val decimalFormat = when {
+                    maxValue < 1f -> "%.2f kg CO₂"
+                    maxValue < 10f -> "%.1f kg CO₂"
+                    else -> "%.0f kg CO₂"
+                }
                 drawText(
-                    "${(step * i).toInt()} kg CO₂",
-                    20f, // Position X
-                    yPosition, // Position Y
+                    String.format(decimalFormat, step * i),
+                    yAxisOffset - 5f,
+                    yPosition,
                     paint
                 )
             }
         }
 
-        groupedData.forEachIndexed { index, (periodKey, value) ->
-            val x = index * (size.width / groupedData.size) + 40f
-            val y = size.height - 20f - (value?.times((size.height - 40f) / maxValue) ?: 0f)
+        val spacing = (size.width - yAxisOffset - 20f) / (groupedData.size - 1).coerceAtLeast(1)
+        val points = groupedData.mapIndexed { index, (_, value) ->
+            val x = yAxisOffset + (index * spacing) + 50f
+            val y = size.height - bottomOffset - (value?.times((size.height - 2 * bottomOffset) / maxValue) ?: 0f)
+            Offset(x, y)
+        }
+
+        for (i in 0 until points.size - 1) {
+            drawLine(
+                color = Color.Blue,
+                start = points[i],
+                end = points[i + 1],
+                strokeWidth = 4f
+            )
+        }
+
+        groupedData.forEachIndexed { index, (periodKey, _) ->
+            val point = points[index]
             drawCircle(
                 color = Color.Blue,
-                radius = 6f,
-                center = Offset(x, y)
+                radius = 10f,
+                center = point
             )
-
-            // Afficher les labels sous chaque point (jour, mois, année selon la période)
             drawContext.canvas.nativeCanvas.apply {
                 val paint = android.graphics.Paint().apply {
                     color = android.graphics.Color.BLACK
-                    textSize = 30f
-                    textAlign = android.graphics.Paint.Align.CENTER // Centre le texte sous les points
+                    textSize = 28f
+                    textAlign = android.graphics.Paint.Align.CENTER
                 }
                 val label = try {
                     when (period) {
@@ -464,7 +479,6 @@ fun SimpleLineChart(
                             SimpleDateFormat("dd/MM", Locale.getDefault()).format(date!!)
                         }
                         "Semaine" -> {
-                            // Pour afficher par ex. "Semaine 18"
                             val parts = periodKey.toString().split("-")
                             if (parts.size == 2) "Sem. ${parts[1]}" else periodKey.toString()
                         }
@@ -476,16 +490,12 @@ fun SimpleLineChart(
                         else -> periodKey.toString()
                     }
                 } catch (e: Exception) {
-                    Log.e("SimpleLineChart", "Erreur de parsing label", e)
                     periodKey.toString()
                 }
-
-
-
                 drawText(
                     label,
-                    x, // Position X
-                    size.height - 5f, // Position Y (légèrement en dessous des points)
+                    point.x,
+                    size.height + 20f,
                     paint
                 )
             }
@@ -493,8 +503,8 @@ fun SimpleLineChart(
     }
 }
 
+
 fun getTodayCO2Total(products: List<ScannedProduct>): Float {
-    val today = Calendar.getInstance()
     val todayStart = Calendar.getInstance().apply {
         set(Calendar.HOUR_OF_DAY, 0)
         set(Calendar.MINUTE, 0)
