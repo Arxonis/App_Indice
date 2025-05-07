@@ -4,15 +4,24 @@ import android.annotation.SuppressLint
 import android.os.Build
 import androidx.annotation.OptIn
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
-import kotlin.math.*
+
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.geometry.*
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.layout.FlowRow
+
 
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -25,17 +34,13 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import kotlin.math.cos
 import kotlin.math.sin
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.center
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.layout.ContentScale
@@ -43,25 +48,18 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.toUpperCase
-import androidx.compose.ui.unit.center
-import androidx.compose.ui.unit.dp
-import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
 import coil.compose.rememberAsyncImagePainter
-import com.google.android.material.color.MaterialColors
 import com.indicefossile.indiceapp.R
 import com.indicefossile.indiceapp.data.model.ScannedProduct
 import com.indicefossile.indiceapp.ui.viewmodel.ScannedProductViewModel
 import com.patrykandpatrick.vico.core.extension.sumOf
 import java.text.SimpleDateFormat
 import java.util.*
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import kotlin.math.atan2
-import kotlin.math.min
 import java.util.Locale
+import kotlin.math.min
 
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -88,10 +86,17 @@ fun HomeScreen(
         }
 
     Box(modifier = Modifier.fillMaxSize()) {
+        Image(
+            painter = painterResource(id = R.drawable.fondindice), // ⚠️ le nom du fichier doit être fond_app_indice.png
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.matchParentSize()
+        )
+
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
+                .background(MaterialTheme.colorScheme.background.copy(alpha = 0f))
                 .padding(horizontal = 16.dp),
             contentPadding = PaddingValues(bottom = 100.dp)
         ) {
@@ -561,12 +566,13 @@ fun calculateCO2ByGreenScore(products: List<ScannedProduct>): Map<String, Pair<F
 }
 
 
+@kotlin.OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun InteractivePieChart(
-    data: Map<String, Pair<Float, Int>>, // Changez ici pour recevoir un Pair de Float et Int
+    data: Map<String, Pair<Float, Int>>,
     modifier: Modifier = Modifier
 ) {
-    val total = data.values.sumOf { it.first }.takeIf { it > 0 } ?: return // Total CO2
+    val total = data.values.sumOf { it.first }.takeIf { it > 0 } ?: return
     val proportions = data.mapValues { it.value.first / total }
 
     val sortedData = proportions.toList().sortedWith { a, b ->
@@ -587,12 +593,20 @@ fun InteractivePieChart(
     )
 
     var selectedScore by remember { mutableStateOf<String?>(null) }
+    val animatedSweep = remember { Animatable(0f) }
+
+    LaunchedEffect(proportions) {
+        animatedSweep.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(durationMillis = 800, easing = FastOutSlowInEasing)
+        )
+    }
 
     Column(
         modifier = modifier
             .fillMaxWidth()
             .padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Box(
             modifier = Modifier
@@ -607,14 +621,16 @@ fun InteractivePieChart(
                         val width = size.width
                         val height = size.height
 
-                        val radius = if (width < height) width / 2f else height / 2f
+                        val radius = min(width, height) / 2f
                         val center = Offset(width / 2f, height / 2f)
                         val touchVector = offset - center
                         val touchDistance = touchVector.getDistance()
 
                         if (touchDistance > radius) return@detectTapGestures
 
-                        var touchAngle = Math.toDegrees(atan2(touchVector.y.toDouble(), touchVector.x.toDouble())).toFloat()
+                        var touchAngle = Math.toDegrees(
+                            atan2(touchVector.y.toDouble(), touchVector.x.toDouble())
+                        ).toFloat()
                         touchAngle = (touchAngle + 360f + 90f) % 360f
 
                         var angleAccumulator = 0f
@@ -631,21 +647,26 @@ fun InteractivePieChart(
             ) {
                 val width = size.width
                 val height = size.height
-
                 var startAngle = -90f
 
                 sortedData.forEach { (score, proportion) ->
-                    val sweepAngle = 360 * proportion
+                    val sweepAngle = 360 * proportion * animatedSweep.value
                     var color = colors[score] ?: Color.Gray
+
+                    val middleAngle = startAngle + sweepAngle / 2
+                    val zoom = if (score == selectedScore) 12f else 0f
+                    val offsetX = zoom * cos(Math.toRadians(middleAngle.toDouble())).toFloat()
+                    val offsetY = zoom * sin(Math.toRadians(middleAngle.toDouble())).toFloat()
 
                     drawArc(
                         color = color,
                         startAngle = startAngle,
                         sweepAngle = sweepAngle,
-                        useCenter = true
+                        useCenter = true,
+                        topLeft = Offset(offsetX, offsetY),
+                        size = Size(width, height)
                     )
 
-                    val middleAngle = startAngle + sweepAngle / 2
                     val radius = width / 2f * 0.6f
                     val letterX = width / 2f + radius * cos(Math.toRadians(middleAngle.toDouble())).toFloat()
                     val letterY = height / 2f + radius * sin(Math.toRadians(middleAngle.toDouble())).toFloat()
@@ -656,33 +677,30 @@ fun InteractivePieChart(
                             textSize = 40f
                             textAlign = android.graphics.Paint.Align.CENTER
                         }
-                        val displayText = if (score == "a-plus") "A+" else score.first().uppercase()
-                        canvas.nativeCanvas.drawText(
-                            displayText,
-                            letterX,
-                            letterY,
-                            paint
-                        )
+                        val displayText = when (score) {
+                            "a-plus" -> "A+"
+                            else -> score.first().uppercase()
+                        }
+                        canvas.nativeCanvas.drawText(displayText, letterX, letterY, paint)
                     }
 
                     startAngle += sweepAngle
                 }
 
                 selectedScore?.let { score ->
-                    val sweepAngle = 360 * (proportions[score] ?: 0f)
-                    val color = colors[score] ?: Color.Gray
+                    val sweepAngle = 360 * (proportions[score] ?: 0f) * animatedSweep.value
 
                     var angleAccumulator = 0f
-                    for ((score, proportion) in sortedData) {
-                        val sweep = 360 * proportion
-                        if (score == selectedScore) {
+                    for ((s, proportion) in sortedData) {
+                        val sweep = 360 * proportion * animatedSweep.value
+                        if (s == score) {
                             val arcStartAngle = angleAccumulator - 90
                             drawArc(
                                 color = Color.Black,
                                 startAngle = arcStartAngle,
                                 sweepAngle = sweepAngle,
                                 useCenter = true,
-                                style = Stroke(width = 8.dp.toPx())
+                                style = Stroke(width = 6.dp.toPx())
                             )
                             break
                         }
@@ -692,18 +710,60 @@ fun InteractivePieChart(
             }
         }
 
-        if (selectedScore != null) {
-            val color = colors[selectedScore] ?: Color.Gray
-            val (totalCO2, productCount) = data[selectedScore] ?: Pair(0f, 0)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            sortedData.forEach { (score, proportion) ->
+                val color = colors[score] ?: Color.Gray
+                val label = when (score) {
+                    "a-plus" -> "A+ 🌿"
+                    "a" -> "A 🍃"
+                    "b" -> "B 🌱"
+                    "c" -> "C 🍂"
+                    "d" -> "D 🌾"
+                    "e" -> "E 🪵"
+                    else -> score.uppercase()
+                }
+                val percent = (proportion * 100).toInt()
 
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.1f))
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Écoscore : ${selectedScore!!.uppercase()}", style = MaterialTheme.typography.titleMedium)
-                    Text("Nombre de produits : $productCount", style = MaterialTheme.typography.bodyMedium)
-                    Text("CO2 total : ${totalCO2.toInt()} g", style = MaterialTheme.typography.bodyMedium)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(end = 8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(12.dp)
+                            .background(color, CircleShape)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("$label ($percent%)", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
+
+        AnimatedVisibility(visible = selectedScore != null) {
+            selectedScore?.let { score ->
+                val color = colors[score] ?: Color.Gray
+                val pair = data[score]
+                val count = pair?.second ?: 0
+                val co2 = pair?.first ?: 0f
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.1f))
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            "Écoscore : ${if (score == "a-plus") "A+" else score.uppercase()}",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            "Nombre de produits : $count",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Text(
+                            "CO₂ total : ${"%.2f".format(co2)} kg",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                 }
             }
         }

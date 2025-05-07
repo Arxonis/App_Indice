@@ -1,7 +1,6 @@
 package com.indicefossile.indiceapp.ui.activity
 
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -29,12 +28,10 @@ class MainActivity : ComponentActivity() {
                 HomeScreen(
                     viewModel = viewModel,
                     onScanClick = {
-                        // Lancer ScanActivity dans l'application
                         val scanIntent = Intent(this, ScanActivity::class.java)
                         startActivity(scanIntent)
                     },
                     onWebsiteClick = {
-                        // Ouvrir le site du catalogue
                         val browserIntent = Intent(Intent.ACTION_VIEW,
                             "https://indicefossile.fr/catalogue".toUri())
                         startActivity(browserIntent)
