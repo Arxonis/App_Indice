@@ -42,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -182,7 +183,8 @@ fun HomeScreen(
                     }
 
                     if (showPieChart) {
-                        InteractivePieChart(co2ByGreenScore)
+                        Spacer(modifier = Modifier.padding(12.dp))
+                        InteractiveDonutChart(co2ByGreenScore)
                     } else {
                         Row(
                             modifier = Modifier
@@ -568,7 +570,7 @@ fun calculateCO2ByGreenScore(products: List<ScannedProduct>): Map<String, Pair<F
 
 @kotlin.OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun InteractivePieChart(
+fun InteractiveDonutChart(
     data: Map<String, Pair<Float, Int>>,
     modifier: Modifier = Modifier
 ) {
@@ -613,6 +615,7 @@ fun InteractivePieChart(
                 .fillMaxWidth()
                 .aspectRatio(1f)
         ) {
+            // Donut Canvas
             Canvas(modifier = Modifier
                 .fillMaxSize()
                 .pointerInput(Unit) {
@@ -620,13 +623,17 @@ fun InteractivePieChart(
                         val size = this.size
                         val width = size.width
                         val height = size.height
-
+                        val strokeWidth = min(width, height) * 0.25f
                         val radius = min(width, height) / 2f
                         val center = Offset(width / 2f, height / 2f)
                         val touchVector = offset - center
                         val touchDistance = touchVector.getDistance()
 
-                        if (touchDistance > radius) return@detectTapGestures
+                        val touchPadding = 12.dp.toPx()
+                        val outerLimit = radius + touchPadding
+                        val innerLimit = radius - strokeWidth
+
+                        if (touchDistance !in innerLimit..outerLimit) return@detectTapGestures
 
                         var touchAngle = Math.toDegrees(
                             atan2(touchVector.y.toDouble(), touchVector.x.toDouble())
@@ -647,12 +654,12 @@ fun InteractivePieChart(
             ) {
                 val width = size.width
                 val height = size.height
+                val strokeWidth = width * 0.25f
                 var startAngle = -90f
 
                 sortedData.forEach { (score, proportion) ->
                     val sweepAngle = 360 * proportion * animatedSweep.value
-                    var color = colors[score] ?: Color.Gray
-
+                    val color = colors[score] ?: Color.Gray
                     val middleAngle = startAngle + sweepAngle / 2
                     val zoom = if (score == selectedScore) 12f else 0f
                     val offsetX = zoom * cos(Math.toRadians(middleAngle.toDouble())).toFloat()
@@ -662,45 +669,28 @@ fun InteractivePieChart(
                         color = color,
                         startAngle = startAngle,
                         sweepAngle = sweepAngle,
-                        useCenter = true,
+                        useCenter = false,
+                        style = Stroke(width = strokeWidth, cap = StrokeCap.Butt),
                         topLeft = Offset(offsetX, offsetY),
                         size = Size(width, height)
                     )
 
-                    val radius = width / 2f * 0.6f
-                    val letterX = width / 2f + radius * cos(Math.toRadians(middleAngle.toDouble())).toFloat()
-                    val letterY = height / 2f + radius * sin(Math.toRadians(middleAngle.toDouble())).toFloat()
-
-                    drawIntoCanvas { canvas ->
-                        val paint = android.graphics.Paint().apply {
-                            color = Color.Black
-                            textSize = 40f
-                            textAlign = android.graphics.Paint.Align.CENTER
-                        }
-                        val displayText = when (score) {
-                            "a-plus" -> "A+"
-                            else -> score.first().uppercase()
-                        }
-                        canvas.nativeCanvas.drawText(displayText, letterX, letterY, paint)
-                    }
-
                     startAngle += sweepAngle
                 }
 
+                // Outline for selected segment
                 selectedScore?.let { score ->
                     val sweepAngle = 360 * (proportions[score] ?: 0f) * animatedSweep.value
-
                     var angleAccumulator = 0f
                     for ((s, proportion) in sortedData) {
                         val sweep = 360 * proportion * animatedSweep.value
                         if (s == score) {
-                            val arcStartAngle = angleAccumulator - 90
                             drawArc(
                                 color = Color.Black,
-                                startAngle = arcStartAngle,
+                                startAngle = angleAccumulator - 90f,
                                 sweepAngle = sweepAngle,
-                                useCenter = true,
-                                style = Stroke(width = 6.dp.toPx())
+                                useCenter = false,
+                                style = Stroke(width = strokeWidth + 6.dp.toPx())
                             )
                             break
                         }
@@ -708,8 +698,38 @@ fun InteractivePieChart(
                     }
                 }
             }
+
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .background(
+                        color = Color.White,
+                        shape = RoundedCornerShape(20.dp)
+                    )
+                    .border(
+                        width = 1.dp,
+                        color = Color.LightGray,
+                        shape = RoundedCornerShape(20.dp)
+                    )
+                    .padding(horizontal = 16.dp, vertical = 10.dp)
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "%.1f kg".format(data.values.sumOf { it.first }),
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                    Text(
+                        text = "CO₂ total",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color.Gray
+                    )
+                }
+            }
         }
 
+        Spacer(modifier = Modifier.padding(16.dp))
+
+        // Legend
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             sortedData.forEach { (score, proportion) ->
                 val color = colors[score] ?: Color.Gray
@@ -739,6 +759,7 @@ fun InteractivePieChart(
             }
         }
 
+        // Selected segment info card
         AnimatedVisibility(visible = selectedScore != null) {
             selectedScore?.let { score ->
                 val color = colors[score] ?: Color.Gray
@@ -747,8 +768,8 @@ fun InteractivePieChart(
                 val co2 = pair?.first ?: 0f
 
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.1f))
+                    modifier = Modifier.fillMaxWidth().border(1.dp, Color.Black, shape = RoundedCornerShape(12.dp)),
+                    colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.95f))
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
