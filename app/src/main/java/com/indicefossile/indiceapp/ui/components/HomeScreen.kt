@@ -2,7 +2,7 @@ package com.indicefossile.indiceapp.ui.components
 
 import android.annotation.SuppressLint
 import android.os.Build
-import androidx.annotation.OptIn
+import androidx.compose.ui.graphics.Paint
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -14,15 +14,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
-
+import android.graphics.LinearGradient
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.geometry.*
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.FlowRow
-
-
+import android.graphics.Shader
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.withStyle
@@ -58,6 +57,7 @@ import com.patrykandpatrick.vico.core.extension.sumOf
 import java.text.SimpleDateFormat
 import java.util.*
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.toArgb
 import kotlin.math.atan2
 import java.util.Locale
 import kotlin.math.min
@@ -387,7 +387,6 @@ fun getEcoScoreColor(ecoScore: String?): Color {
 
 
 
-@OptIn(UnstableApi::class)
 @Composable
 fun SimpleLineChart(
     rawData: List<Pair<Date, Float?>>,
@@ -466,19 +465,21 @@ fun SimpleLineChart(
         val yAxisOffset = 70f
         val bottomOffset = 20f
 
+        // Axes
         drawLine(
-            color = Color.Black,
+            color = Color.Gray,
             start = Offset(yAxisOffset, 0f),
-            end = Offset(yAxisOffset, size.height),
-            strokeWidth = 2f
+            end = Offset(yAxisOffset, size.height - bottomOffset),
+            strokeWidth = 1.5f
         )
         drawLine(
-            color = Color.Black,
+            color = Color.Gray,
             start = Offset(yAxisOffset, size.height - bottomOffset),
             end = Offset(size.width, size.height - bottomOffset),
-            strokeWidth = 2f
+            strokeWidth = 1.5f
         )
 
+        // Graduation
         val maxValue = groupedData.maxOfOrNull { it.second ?: 0f } ?: 0f
         val step = maxValue / 5
 
@@ -511,36 +512,51 @@ fun SimpleLineChart(
             Offset(x.toFloat(), y)
         }
 
-        for (i in 0 until points.size - 1) {
-            drawLine(
-                color = Color.Black,
-                start = points[i],
-                end = points[i + 1],
+        // Line with gradient
+        drawIntoCanvas { canvas ->
+            val paint = Paint().asFrameworkPaint().apply {
+                isAntiAlias = true
                 strokeWidth = 4f
-            )
+                style = android.graphics.Paint.Style.STROKE
+                shader = LinearGradient(
+                    points.first().x,
+                    points.first().y,
+                    points.last().x,
+                    points.last().y,
+                    intArrayOf(Color(0xFF006600).toArgb(), Color(0xFF8E44AD).toArgb()),
+                    null,
+                    Shader.TileMode.CLAMP
+                )
+            }
+            for (i in 0 until points.size - 1) {
+                canvas.nativeCanvas.drawLine(
+                    points[i].x, points[i].y,
+                    points[i + 1].x, points[i + 1].y,
+                    paint
+                )
+            }
         }
 
+        // Points & Labels
         groupedData.forEachIndexed { index, (date, _) ->
             val point = points[index]
             drawCircle(
                 color = Color.Black,
-                radius = 10f,
+                radius = 8f,
                 center = point
             )
-
             drawContext.canvas.nativeCanvas.apply {
                 val paint = android.graphics.Paint().apply {
-                    color = android.graphics.Color.BLACK
-                    textSize = 28f
+                    color = android.graphics.Color.DKGRAY
+                    textSize = 26f
                     textAlign = android.graphics.Paint.Align.CENTER
                 }
                 val label = try {
                     when (period) {
                         "Jour" -> SimpleDateFormat("dd/MM", Locale.getDefault()).format(date)
                         "Semaine" -> {
-                            val cal = Calendar.getInstance()
-                            cal.time = date
-                            "Sem. ${cal.get(Calendar.WEEK_OF_YEAR)}"
+                            val cal = Calendar.getInstance().apply { time = date }
+                            "S${cal.get(Calendar.WEEK_OF_YEAR)}"
                         }
                         "Mois" -> SimpleDateFormat("MM/yyyy", Locale.getDefault()).format(date)
                         "Année" -> SimpleDateFormat("yyyy", Locale.getDefault()).format(date)
@@ -549,14 +565,11 @@ fun SimpleLineChart(
                 } catch (e: Exception) {
                     date.toString()
                 }
-
                 drawText(label, point.x, size.height + 20f, paint)
             }
         }
     }
 }
-
-
 
 fun getTodayCO2Total(products: List<ScannedProduct>): Float {
     val todayStart = Calendar.getInstance().apply {
