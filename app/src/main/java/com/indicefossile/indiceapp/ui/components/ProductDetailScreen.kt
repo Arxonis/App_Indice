@@ -144,9 +144,13 @@ fun ProductDetailScreen(product: Product, modifier: Modifier = Modifier) {
             )
             Spacer(modifier = Modifier.height(8.dp))
 
-            val totalCO2 = product.ecoscore_data?.agribalyse?.co2_total.toString().toBigDecimal()
-                .setScale(3, RoundingMode.HALF_UP)
-                ?.toDouble().toString()
+            val totalCO2 = product.quantity?.let {
+                extractNumericValue(it)?.let {
+                    product.ecoscore_data?.agribalyse?.co2_total?.div(1000)?.times(
+                        it
+                    )?.toBigDecimal()?.setScale(3, RoundingMode.HALF_UP).toString()
+                } ?: "--"
+            }
 
             totalCO2.let {
                 Card(
@@ -162,7 +166,7 @@ fun ProductDetailScreen(product: Product, modifier: Modifier = Modifier) {
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "Total CO₂e par kg de produit:",
+                            text = "Total CO₂e produit :",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onPrimary,
@@ -240,22 +244,14 @@ fun ProductDetailScreen(product: Product, modifier: Modifier = Modifier) {
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "Détails en kg de CO₂e par article",
+                        text = "Détails de CO₂e par kg de produit",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.error
                     )
                     product.ecoscore_data?.agribalyse?.let { agr ->
-                        DetailItem(label = "Total par article",
-                            value = agr.co2_total?.toBigDecimal()?.let { co2Total ->
-                                product.quantity?.let {
-                                    extractNumericValue(it)?.let { weight ->
-                                        (co2Total.divide(BigDecimal(1000)) * BigDecimal(weight))
-                                            .setScale(3, RoundingMode.CEILING)
-                                            .toString()
-                                    }
-                                } ?: "Non disponible"
-                            } ?: "Non disponible")
+                        DetailItem(label = "Total",
+                            value = agr.co2_total?.toBigDecimal()?.setScale(3, RoundingMode.HALF_UP).toString())
                     } ?: Text(
                         text = "Données Agribalyse non disponibles",
                         style = MaterialTheme.typography.bodyLarge,
@@ -264,72 +260,18 @@ fun ProductDetailScreen(product: Product, modifier: Modifier = Modifier) {
                     Spacer(modifier = Modifier.height(8.dp))
                     product.ecoscore_data?.agribalyse?.let { agr ->
                         DetailItem(label = "Agriculture",
-                            value = agr.co2_agriculture?.toBigDecimal()?.let { co2Agriculture ->
-                                product.quantity?.let {
-                                    extractNumericValue(it)?.let { weight ->
-                                        (co2Agriculture.divide(BigDecimal(1000)) * BigDecimal(weight))
-                                            .setScale(3, RoundingMode.CEILING)
-                                            .toString()
-                                    }
-                                } ?: "Non disponible"
-                            } ?: "Non disponible")
-
+                            value = agr.co2_agriculture?.toBigDecimal()?.setScale(3, RoundingMode.HALF_UP)
+                                .toString() + " kg")
                         DetailItem(label = "Consumption",
-                            value = agr.co2_consumption?.toBigDecimal()?.let { co2Consumption ->
-                                product.quantity?.let {
-                                    extractNumericValue(it)?.let { weight ->
-                                        (co2Consumption.divide(BigDecimal(1000)) * BigDecimal(weight))
-                                            .setScale(3, RoundingMode.CEILING)
-                                            .toString()
-                                    }
-                                } ?: "Non disponible"
-                            } ?: "Non disponible")
-
+                            value = agr.co2_consumption?.toBigDecimal()?.setScale(3, RoundingMode.HALF_UP).toString() + " kg")
                         DetailItem(label = "Distribution",
-                            value = agr.co2_distribution?.toBigDecimal()?.let { co2Distribution ->
-                                product.quantity?.let {
-                                    extractNumericValue(it)?.let { weight ->
-                                        (co2Distribution.divide(BigDecimal(1000)) * BigDecimal(weight))
-                                            .setScale(3, RoundingMode.CEILING)
-                                            .toString()
-                                    }
-                                } ?: "Non disponible"
-                            } ?: "Non disponible")
-
+                            value = agr.co2_distribution?.toBigDecimal()?.setScale(3, RoundingMode.HALF_UP).toString() + " kg")
                         DetailItem(label = "Packaging",
-                            value = agr.co2_packaging?.toBigDecimal()?.let { co2Packaging ->
-                                product.quantity?.let {
-                                    extractNumericValue(it)?.let { weight ->
-                                        (co2Packaging.divide(BigDecimal(1000)) * BigDecimal(weight))
-                                            .setScale(3, RoundingMode.CEILING)
-                                            .toString()
-                                    }
-                                } ?: "Non disponible"
-                            } ?: "Non disponible")
-
+                            value = agr.co2_packaging?.toBigDecimal()?.setScale(3, RoundingMode.HALF_UP).toString() + " kg")
                         DetailItem(label = "Processing",
-                            value = agr.co2_processing?.toBigDecimal()?.let { co2Processing ->
-                                product.quantity?.let {
-                                    extractNumericValue(it)?.let { weight ->
-                                        (co2Processing.divide(BigDecimal(1000)) * BigDecimal(weight))
-                                            .setScale(3, RoundingMode.CEILING)
-                                            .toString()
-                                    }
-                                } ?: "Non disponible"
-                            } ?: "Non disponible")
-
+                            value = agr.co2_processing?.toBigDecimal()?.setScale(3, RoundingMode.HALF_UP).toString() + " kg")
                         DetailItem(label = "Transportation",
-                            value = agr.co2_transportation?.toBigDecimal()?.let { co2Transportation ->
-                                product.quantity?.let {
-                                    extractNumericValue(it)?.let { weight ->
-                                        (co2Transportation.divide(BigDecimal(1000)) * BigDecimal(weight))
-                                            .setScale(3, RoundingMode.CEILING)
-                                            .toString()
-                                    }
-                                } ?: "Non disponible"
-                            } ?: "Non disponible")
-
-
+                            value = agr.co2_transportation?.toBigDecimal()?.setScale(3, RoundingMode.HALF_UP).toString() + " kg")
                     } ?: Text(
                         text = "Données Agribalyse non disponibles",
                         style = MaterialTheme.typography.bodyMedium,

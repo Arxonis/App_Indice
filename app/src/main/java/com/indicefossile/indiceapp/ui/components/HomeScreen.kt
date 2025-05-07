@@ -88,7 +88,7 @@ fun HomeScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         Image(
-            painter = painterResource(id = R.drawable.fondindice), // ⚠️ le nom du fichier doit être fond_app_indice.png
+            painter = painterResource(id = R.drawable.fondindice),
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier = Modifier.matchParentSize()
@@ -126,7 +126,7 @@ fun HomeScreen(
 
                 Text(
                     text = if (showHistory) "→ Voir les statistiques" else "← Voir l’historique",
-                    color = MaterialTheme.colorScheme.primary,
+                    color = Color(0xFF7A1FCC),
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -177,13 +177,19 @@ fun HomeScreen(
 
                     Button(
                         onClick = { showPieChart = !showPieChart },
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF7A1FCC),
+                            contentColor = Color.White
+                        ),
+                        border = BorderStroke(1.dp, color = Color(0xFF9933FF))
                     ) {
                         Text(if (showPieChart) "Voir le graphique linéaire" else "Voir la répartition CO₂ par note")
                     }
 
+                    Spacer(modifier = Modifier.padding(12.dp))
+
                     if (showPieChart) {
-                        Spacer(modifier = Modifier.padding(12.dp))
                         InteractiveDonutChart(co2ByGreenScore)
                     } else {
                         Row(
@@ -198,10 +204,11 @@ fun HomeScreen(
                                     modifier = Modifier.weight(1f),
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = if (selectedPeriod == period)
-                                            MaterialTheme.colorScheme.primary
+                                            Color(0xFF9933FF)
                                         else
-                                            MaterialTheme.colorScheme.secondary
-                                    )
+                                            Color(0xFF7A1FCC)
+                                    ),
+                                    border = BorderStroke(1.dp, color = Color.Black)
                                 ) {
                                     Text(
                                         text = period,
@@ -386,24 +393,50 @@ fun SimpleLineChart(
     rawData: List<Pair<Date, Float?>>,
     period: String
 ) {
-    fun groupDataByPeriod(data: List<Pair<Date, Float?>>): List<Pair<Any, Float?>> {
+    fun groupDataByPeriod(data: List<Pair<Date, Float?>>): List<Pair<Date, Float?>> {
         return try {
             when (period) {
                 "Jour" -> {
-                    data.groupBy { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(it.first) }
-                        .map { Pair(it.key, it.value.mapNotNull { it.second }.sum()) }
+                    val format = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                    data.groupBy { format.format(it.first) }
+                        .map {
+                            val date = format.parse(it.key)!!
+                            date to it.value.mapNotNull { p -> p.second }.sum()
+                        }
+                        .sortedBy { it.first }
                 }
                 "Semaine" -> {
-                    data.groupBy { SimpleDateFormat("yyyy-ww", Locale.getDefault()).format(it.first) }
-                        .map { Pair(it.key, it.value.mapNotNull { it.second }.sum()) }
+                    val format = SimpleDateFormat("yyyy-ww", Locale.getDefault())
+                    data.groupBy { format.format(it.first) }
+                        .map {
+                            val key = it.key
+                            val cal = Calendar.getInstance()
+                            val parts = key.split("-")
+                            cal.set(Calendar.YEAR, parts[0].toInt())
+                            cal.set(Calendar.WEEK_OF_YEAR, parts[1].toInt())
+                            cal.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+                            val date = cal.time
+                            date to it.value.mapNotNull { p -> p.second }.sum()
+                        }
+                        .sortedBy { it.first }
                 }
                 "Mois" -> {
-                    data.groupBy { SimpleDateFormat("yyyy-MM", Locale.getDefault()).format(it.first) }
-                        .map { Pair(it.key, it.value.mapNotNull { it.second }.sum()) }
+                    val format = SimpleDateFormat("yyyy-MM", Locale.getDefault())
+                    data.groupBy { format.format(it.first) }
+                        .map {
+                            val date = format.parse(it.key)!!
+                            date to it.value.mapNotNull { p -> p.second }.sum()
+                        }
+                        .sortedBy { it.first }
                 }
                 "Année" -> {
-                    data.groupBy { SimpleDateFormat("yyyy", Locale.getDefault()).format(it.first) }
-                        .map { Pair(it.key, it.value.mapNotNull { it.second }.sum()) }
+                    val format = SimpleDateFormat("yyyy", Locale.getDefault())
+                    data.groupBy { format.format(it.first) }
+                        .map {
+                            val date = format.parse(it.key)!!
+                            date to it.value.mapNotNull { p -> p.second }.sum()
+                        }
+                        .sortedBy { it.first }
                 }
                 else -> data
             }
@@ -471,29 +504,30 @@ fun SimpleLineChart(
             }
         }
 
-        val spacing = (size.width - yAxisOffset - 20f) / (groupedData.size - 1).coerceAtLeast(1)
+        val spacing = (size.width - yAxisOffset - 20f) / (groupedData.size - 0.75).coerceAtLeast(1.0)
         val points = groupedData.mapIndexed { index, (_, value) ->
             val x = yAxisOffset + (index * spacing) + 50f
             val y = size.height - bottomOffset - (value?.times((size.height - 2 * bottomOffset) / maxValue) ?: 0f)
-            Offset(x, y)
+            Offset(x.toFloat(), y)
         }
 
         for (i in 0 until points.size - 1) {
             drawLine(
-                color = Color.Blue,
+                color = Color.Black,
                 start = points[i],
                 end = points[i + 1],
                 strokeWidth = 4f
             )
         }
 
-        groupedData.forEachIndexed { index, (periodKey, _) ->
+        groupedData.forEachIndexed { index, (date, _) ->
             val point = points[index]
             drawCircle(
-                color = Color.Blue,
+                color = Color.Black,
                 radius = 10f,
                 center = point
             )
+
             drawContext.canvas.nativeCanvas.apply {
                 val paint = android.graphics.Paint().apply {
                     color = android.graphics.Color.BLACK
@@ -502,34 +536,26 @@ fun SimpleLineChart(
                 }
                 val label = try {
                     when (period) {
-                        "Jour" -> {
-                            val date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(periodKey.toString())
-                            SimpleDateFormat("dd/MM", Locale.getDefault()).format(date!!)
-                        }
+                        "Jour" -> SimpleDateFormat("dd/MM", Locale.getDefault()).format(date)
                         "Semaine" -> {
-                            val parts = periodKey.toString().split("-")
-                            if (parts.size == 2) "Sem. ${parts[1]}" else periodKey.toString()
+                            val cal = Calendar.getInstance()
+                            cal.time = date
+                            "Sem. ${cal.get(Calendar.WEEK_OF_YEAR)}"
                         }
-                        "Mois" -> {
-                            val date = SimpleDateFormat("yyyy-MM", Locale.getDefault()).parse(periodKey.toString())
-                            SimpleDateFormat("MM/yyyy", Locale.getDefault()).format(date!!)
-                        }
-                        "Année" -> periodKey.toString()
-                        else -> periodKey.toString()
+                        "Mois" -> SimpleDateFormat("MM/yyyy", Locale.getDefault()).format(date)
+                        "Année" -> SimpleDateFormat("yyyy", Locale.getDefault()).format(date)
+                        else -> date.toString()
                     }
                 } catch (e: Exception) {
-                    periodKey.toString()
+                    date.toString()
                 }
-                drawText(
-                    label,
-                    point.x,
-                    size.height + 20f,
-                    paint
-                )
+
+                drawText(label, point.x, size.height + 20f, paint)
             }
         }
     }
 }
+
 
 
 fun getTodayCO2Total(products: List<ScannedProduct>): Float {
@@ -559,9 +585,7 @@ fun calculateCO2ByGreenScore(products: List<ScannedProduct>): Map<String, Pair<F
         .filter { it.CO2_TOTAL != null && it.GreenScore != null }
         .groupBy { it.GreenScore!!.lowercase() }
         .mapValues { (_, list) ->
-            // Calcule la somme du CO2 total pour chaque GreenScore
             val totalCO2 = list.sumOf { it.CO2_TOTAL!!.toFloat() }
-            // Calcule le nombre de produits pour chaque GreenScore
             val productCount = list.size
             Pair(totalCO2, productCount)
         }
@@ -708,7 +732,7 @@ fun InteractiveDonutChart(
                     )
                     .border(
                         width = 1.dp,
-                        color = Color.LightGray,
+                        color = Color(0xFF7A1FCC),
                         shape = RoundedCornerShape(20.dp)
                     )
                     .padding(horizontal = 16.dp, vertical = 10.dp)
@@ -719,7 +743,7 @@ fun InteractiveDonutChart(
                         style = MaterialTheme.typography.titleLarge
                     )
                     Text(
-                        text = "CO₂ total",
+                        text = "CO₂e total",
                         style = MaterialTheme.typography.titleMedium,
                         color = Color.Gray
                     )
