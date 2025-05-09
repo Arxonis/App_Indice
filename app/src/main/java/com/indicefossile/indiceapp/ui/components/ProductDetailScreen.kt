@@ -26,7 +26,6 @@ import coil.compose.rememberAsyncImagePainter
 import com.indicefossile.indiceapp.R
 import com.indicefossile.indiceapp.data.model.Product
 import com.indicefossile.indiceapp.ui.utils.getProductImageUrl
-import java.math.BigDecimal
 import java.math.RoundingMode
 
 @Composable

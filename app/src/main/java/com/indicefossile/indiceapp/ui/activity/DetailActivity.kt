@@ -24,7 +24,6 @@ class DetailActivity : ComponentActivity() {
 
         setContent {
             val product by viewModel.product.collectAsState()
-            // Envoi des résultats uniquement lorsque le produit est trouvé
             LaunchedEffect(product) {
                 if (product != null) {
                     val resultIntent = Intent().apply {

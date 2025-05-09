@@ -83,6 +83,12 @@ dependencies {
     implementation("androidx.room:room-ktx:2.6.1") // Support des coroutines
     implementation("com.patrykandpatrick.vico:compose-m3:1.13.0")
     implementation("com.patrykandpatrick.vico:core:1.13.0")
+
+    implementation("androidx.camera:camera-camera2:1.3.0")
+    implementation("androidx.camera:camera-lifecycle:1.3.0")
+    implementation("androidx.camera:camera-view:1.3.0")
+    implementation("com.google.mlkit:barcode-scanning:17.0.3")
+    implementation("androidx.compose.material3:material3:1.2.1")
 }
 
 kapt {
