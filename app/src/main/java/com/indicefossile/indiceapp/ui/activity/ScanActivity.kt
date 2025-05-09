@@ -58,7 +58,7 @@ class ScanActivity : AppCompatActivity() {
     private val cameraExecutor = Executors.newSingleThreadExecutor()
     private var isMultipleScan = false
     private var hasScannedOnce = false
-    private val scannedProducts = mutableSetOf<ScannedProduct>()
+    private val scannedProducts = mutableStateListOf<ScannedProduct>()
     private var scannedBarcode by mutableStateOf<String?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -130,14 +130,13 @@ class ScanActivity : AppCompatActivity() {
                     Spacer(modifier = Modifier.height(8.dp))
 
                     LazyColumn {
-                        items(scannedProducts.toList()) { product ->
+                        items(scannedProducts) { product ->
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(vertical = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                // Image produit
                                 if (!product.imageUrl.isNullOrEmpty()) {
                                     AsyncImage(
                                         model = product.imageUrl,
@@ -148,7 +147,6 @@ class ScanActivity : AppCompatActivity() {
                                     )
                                 }
 
-                                // Infos produit
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = product.name ?: product.barcode,
@@ -161,7 +159,6 @@ class ScanActivity : AppCompatActivity() {
                                     )
                                 }
 
-                                // Bouton supprimer
                                 IconButton(onClick = {
                                     scannedProducts.remove(product)
                                 }) {
@@ -208,10 +205,8 @@ class ScanActivity : AppCompatActivity() {
                 )
 
                 if (isMultiple) {
-                    if (scannedProducts.none { it.barcode == scanned.barcode }) {
-                        scannedProducts.add(scanned)
-                        Toast.makeText(context, "${scanned.name} ajouté", Toast.LENGTH_SHORT).show()
-                    }
+                    scannedProducts.add(scanned)
+                    Toast.makeText(context, "${scanned.name} ajouté", Toast.LENGTH_SHORT).show()
                     scannedBarcode = null
                 } else {
                     viewModel.insertProduct(
@@ -229,7 +224,6 @@ class ScanActivity : AppCompatActivity() {
             }
         }
     }
-
 
     @androidx.annotation.OptIn(ExperimentalGetImage::class)
     @Composable
